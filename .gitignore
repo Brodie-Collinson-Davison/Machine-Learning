@@ -5,3 +5,5 @@ mnist_data
 ML_NEW/NeuralNetwork/build
 ML_NEW/NeuralNetwork/.vscode
 ML_NEW/Java_harness/lib
+ML_NEW/NeuralNetwork/googletest
+

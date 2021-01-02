@@ -22,37 +22,7 @@ namespace NN
 {
     class NeuralNetwork
     {
-    public:
-        //          CONSTRUCTORS            //
-        NeuralNetwork ();
-        NeuralNetwork ( int numLayers, int* layerSizes );
-
-        ~NeuralNetwork ();  // DESTRUCTOR
-
-        //          ACCESSORS           //
-        int getNumLayers () const;
-        
-        int getNumInputs () const;
-        int getNumOutputs () const;
-
-        int getNumHiddenLayers () const;
-        int* getLayerSizes () const;
-
-        Matrix<float> getWeightMatrix ( const int& layerIdx ) const;
-
-        //          MUTATORS            //
-
-
-    private:
-
-        int numInputs;
-        int numOutputs;
-
-        int numLayers;
-        int* layerSizes;
-
-        vector <vector <Neuron>> neurons;
-
+    
     };//NeuralNetwork{}
 }
 

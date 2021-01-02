@@ -11,19 +11,4 @@
 
 using namespace NN;
 
-TEST ( NN_Tests, Weight_Matrix_Structure )
-{
-    int layerSizes [] =
-    {
-        1, 2, 3, 1
-    };
 
-    NeuralNetwork net ( 4, layerSizes );
-
-    for ( int i = 1; i < net.getNumLayers(); i ++ )
-    {
-        Matrix <float> mat = net.getWeightMatrix ( i );
-        cout << "Weight Matrix: " << i << endl;
-        mat.print ();
-    }
-}

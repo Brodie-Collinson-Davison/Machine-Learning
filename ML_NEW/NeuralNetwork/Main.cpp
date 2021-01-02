@@ -8,8 +8,7 @@ using namespace NN;
 using namespace MATRIX;
 
 int main ()
-{   
-    cout << "Hey!\n";
-
-    return 0;
+{  
+	
+	return 0;
 }

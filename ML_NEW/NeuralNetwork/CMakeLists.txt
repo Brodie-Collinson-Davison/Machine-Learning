@@ -15,12 +15,14 @@ add_subdirectory(googletest)
 set(NNHeaders
     NeuralNetwork.hpp
     Neuron.hpp
+    Layer.hpp
     Matrix.hpp
 )
 
 set(NNSources
     NeuralNetwork.cpp
     Neuron.cpp
+    Layer.cpp
 )
 
 add_library(${This} STATIC ${NNSources} ${NNHeaders})

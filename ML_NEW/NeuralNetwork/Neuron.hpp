@@ -17,29 +17,35 @@ namespace NN
      */
     class Neuron
     {
+    private:
+        //          MEMBERS         //
+        int numWeights;
+
+        float activation;
+        float bias;
+        float* weights;
+
     public:
         //          CONSTRUCTORS            //
-        Neuron () = default;
+        Neuron ();
         Neuron ( int numWeights );
+        Neuron ( const Neuron& other );
         
         ~Neuron ();    // DESTRUCTOR
         
         //          ACCESSORS           //
         int getNumWeights () const;
-        
-        float getBias () const;
+        float getActivation () const;
+        float getBias () const;  
         float getWeight ( int idx ) const;
         float* getWeights () const;
         
         //          MUTATORS            //
         void setBias ( const float& bias );
+        void setActivation ( const float& activation );
         void setWeight ( const int& idx, const float& value );
         void setWeights ( float* weights );
-
-    private:
-        //          MEMBERS         //
-        float bias;
-        float* weights;
+        void resize ( const int& numWeights );
     };//Neuron{}
 
 }//NN{}
