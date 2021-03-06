@@ -39,7 +39,11 @@ class MainClass
 {
     static void Main(string[] args)
     {
-        NeuralNetwork net = new NeuralNetwork("784 16 16 10", true);
+        // generate random network
+        //NeuralNetwork net = new NeuralNetwork("784 200 100 10", true);
+        string net_json = FileManager.ReadFile("NN_Big_1.json");
+        NeuralNetwork net = JsonSerializer.Deserialize<NeuralNetwork>(net_json);
+        
         float accuracy_untrained = testNetwork(net);
         float accuracy_trained = 0;
 
@@ -51,7 +55,7 @@ class MainClass
 
         Console.Clear();
     
-        trainNetwork(net, 0.01f, 150, 0.15f, shouldLog);
+        trainNetwork(net, 0.01f, 400, 0.0495f, shouldLog);
         Console.WriteLine("Training done!");
 
         accuracy_trained = testNetwork(net);

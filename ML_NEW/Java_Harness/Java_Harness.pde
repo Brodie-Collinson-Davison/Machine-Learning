@@ -153,7 +153,7 @@ void setup ()
   // load network
   try
   {
-      net = new NN (FileIO.readJSONFileAsObject ("G:/Projects/ML/Machine-Learning/ML_NEW/Java_Harness/NN3.json"));
+      net = new NN (FileIO.readJSONFileAsObject ("G:/Projects/ML/Machine-Learning/ML_NEW/Java_Harness/NN_Big_2.json"));
   }
   catch ( RuntimeException e )
   {
