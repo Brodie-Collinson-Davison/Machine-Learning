@@ -14,6 +14,7 @@ namespace NN
 
         // constructors
 
+        // default constructor
         public NeuralNetwork ()
         {
             Layers = new Layer[0];
@@ -22,9 +23,9 @@ namespace NN
 
         /// <summary>
         /// Creates a new network with layers given in the args string
-        /// E.G "3 5 2" will make a network with 3 inputs 1 hidden layer of size 5 and 2 
+        /// E.G "3 5 2" will make a network with 3 inputs 1 hidden layer of size 5 and 2 output neurons 
         /// </summary>
-        /// <param name="args"></param>
+        /// <param name="args">Space separated integers representing layer sizes</param>
         /// <param name="randomise"> if true, weights will be randomised for the network </param>
         public NeuralNetwork(string args, bool randomise = false)
         {
@@ -61,7 +62,7 @@ namespace NN
             {
                 // gen random weights
                 // weights are normally distributed 
-                // weights are normalised by the sqrt(layer size) to avoid large outputs
+                // weight magnitudes are normalised by the sqrt(layer size) to avoid large outputs
                 for ( int idx = 0; idx < Layers.Length; idx ++)
                 {
                     Matrix mat = Layers[idx].WM;
@@ -192,58 +193,4 @@ namespace NN
 
     }//NeuralNetwork{}
 
-    class Layer
-    {
-	    public int Size { get; set; }
-	    public Matrix WM { get; set; }
-	    public Matrix BM { get; set; }
-
-        public Layer ()
-        {
-            Size = 0;
-            WM = new Matrix();
-            BM = new Matrix();
-        }
-
-        public Layer ( int size, int numWeights )
-	    {
-		    Size = size;
-		    WM = new Matrix ( Size, numWeights );
-		    BM = new Matrix ( Size, 1 );
-	    }
-
-        // layer operations
-
-        /// <summary>
-        /// Calculates the weighted sum z = w * input + b
-        /// </summary>
-        /// <param name="input"></param>
-        /// <returns></returns>
-	    public Matrix weightedSum ( Matrix input )
-	    {
-            return WM * input + BM;
-	    }
-
-        /// <summary>
-        /// Calculate the output activation of the layer a = sigmoid ( w * input + b )
-        /// </summary>
-        /// <param name="input"></param>
-        /// <returns></returns>
-	    public Matrix activation ( Matrix input )
-	    {
-            return Mathf.Sigmoid(WM * input + BM);
-	    }
-        public override string ToString ()
-        {
-            string s = "";
-            s += "weights:\n";
-            s += WM.ToString() +"\n";
-
-            s += "biases:\n";
-            s += BM.ToString() +"\n";
-
-            return s;
-        }
-
-    }//Layer{}
 }//NN{}

@@ -12,7 +12,7 @@ int label;
 int[][] img;
 int idx;
 
-int brushSize = 25;
+int brushSize = 20;
 int sqrBrushSize;
 int pixelSize;
 
