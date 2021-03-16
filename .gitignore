@@ -6,7 +6,9 @@ ML_NEW/NeuralNetwork/build
 ML_NEW/NeuralNetwork/.vscode
 ML_NEW/Java_harness/lib
 ML_NEW/NeuralNetwork/googletest
+ML_NEW/NN/NN.sln
 ML_NEW/NN/NN/bin
 ML_NEW/NN/NN/dataset
 ML_NEW/NN/NN/obj
+ML_NEW/NN/NN/NN.csproj
 
