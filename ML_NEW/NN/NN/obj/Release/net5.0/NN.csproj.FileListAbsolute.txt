@@ -1,0 +1,16 @@
+G:\Projects\ML\Machine-Learning\ML_NEW\NN\NN\bin\Release\net5.0\NN.exe
+G:\Projects\ML\Machine-Learning\ML_NEW\NN\NN\bin\Release\net5.0\NN.deps.json
+G:\Projects\ML\Machine-Learning\ML_NEW\NN\NN\bin\Release\net5.0\NN.runtimeconfig.json
+G:\Projects\ML\Machine-Learning\ML_NEW\NN\NN\bin\Release\net5.0\NN.runtimeconfig.dev.json
+G:\Projects\ML\Machine-Learning\ML_NEW\NN\NN\bin\Release\net5.0\NN.dll
+G:\Projects\ML\Machine-Learning\ML_NEW\NN\NN\bin\Release\net5.0\ref\NN.dll
+G:\Projects\ML\Machine-Learning\ML_NEW\NN\NN\bin\Release\net5.0\NN.pdb
+G:\Projects\ML\Machine-Learning\ML_NEW\NN\NN\obj\Release\net5.0\NN.csprojAssemblyReference.cache
+G:\Projects\ML\Machine-Learning\ML_NEW\NN\NN\obj\Release\net5.0\NN.GeneratedMSBuildEditorConfig.editorconfig
+G:\Projects\ML\Machine-Learning\ML_NEW\NN\NN\obj\Release\net5.0\NN.AssemblyInfoInputs.cache
+G:\Projects\ML\Machine-Learning\ML_NEW\NN\NN\obj\Release\net5.0\NN.AssemblyInfo.cs
+G:\Projects\ML\Machine-Learning\ML_NEW\NN\NN\obj\Release\net5.0\NN.csproj.CoreCompileInputs.cache
+G:\Projects\ML\Machine-Learning\ML_NEW\NN\NN\obj\Release\net5.0\NN.dll
+G:\Projects\ML\Machine-Learning\ML_NEW\NN\NN\obj\Release\net5.0\ref\NN.dll
+G:\Projects\ML\Machine-Learning\ML_NEW\NN\NN\obj\Release\net5.0\NN.pdb
+G:\Projects\ML\Machine-Learning\ML_NEW\NN\NN\obj\Release\net5.0\NN.genruntimeconfig.cache
