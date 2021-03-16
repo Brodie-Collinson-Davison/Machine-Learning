@@ -11,13 +11,12 @@ class MainClass
     static void Main(string[] args)
     {
         // generate new network for mnist training
-        NeuralNetwork net = new NeuralNetwork("784 10", true);
+        NeuralNetwork net = new NeuralNetwork("784 16 10", true);
 
         float accuracy_untrained = testNetwork(net);
         float accuracy_trained = 0;
 
         Console.Clear();
-        /*
         Console.WriteLine("Log training (y/n)?");
         string input = Console.ReadLine();
         string logFileName = null;
@@ -31,23 +30,20 @@ class MainClass
         }
 
         Console.Clear();
-        */
 
         // train network with default optimiser parameters
-        TrainingParams defaultParams = new TrainingParams(iTargetCost: 0.00f);
+        TrainingParams defaultParams = new TrainingParams(iTargetCost: 0.050f, iMomentum: 0.25f);
         MNISTOptimiser.TrainNetwork(ref net, defaultParams);
         Console.WriteLine("Training done!");
 
         accuracy_trained = testNetwork(net);
         Console.WriteLine("Untrained: {0:F3}\nTrained: {1:F3}", accuracy_untrained, accuracy_trained);
 
-        /*
         Console.WriteLine("Save network as: ");
         input = Console.ReadLine();
 
         Console.WriteLine("saving as {0}", input);
-        FileManager.SerializeAsJson(net, input);
-        */
+        FileManager.SerializeAsJson(net, input);        
     }
 
     static float testNetwork ( NeuralNetwork net )
