@@ -7,10 +7,10 @@ namespace NN
 {
     public class MNISTReader
     {
-        private const string TrainImages = "dataset/train-images.idx3-ubyte";
-        private const string TrainLabels = "dataset/train-labels.idx1-ubyte";
-        private const string TestImages = "dataset/t10k-images.idx3-ubyte";
-        private const string TestLabels = "dataset/t10k-labels.idx1-ubyte";
+        private const string TrainImages = "/../../../../../../MNIST_Dataset/train-images.idx3-ubyte";
+        private const string TrainLabels = "/../../../../../../MNIST_Dataset/train-labels.idx1-ubyte";
+        private const string TestImages = "/../../../../../../MNIST_Dataset/t10k-images.idx3-ubyte";
+        private const string TestLabels = "/../../../../../../MNIST_Dataset/t10k-labels.idx1-ubyte";
 
         public static IEnumerable<Image> ReadTrainingData()
         {
@@ -30,8 +30,8 @@ namespace NN
 
         private static IEnumerable<Image> Read(string imagesPath, string labelsPath)
         {
-            FileStream labelFStream = new FileStream((Environment.CurrentDirectory + "/../../../" + labelsPath), FileMode.Open);
-            FileStream imagesFStream = new FileStream((Environment.CurrentDirectory + "/../../../" + imagesPath), FileMode.Open);
+            FileStream labelFStream = new FileStream((Environment.CurrentDirectory  + labelsPath), FileMode.Open);
+            FileStream imagesFStream = new FileStream((Environment.CurrentDirectory + imagesPath), FileMode.Open);
 
             BinaryReader labels = new BinaryReader(labelFStream);
             BinaryReader images = new BinaryReader(imagesFStream);

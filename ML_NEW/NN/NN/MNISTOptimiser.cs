@@ -8,11 +8,11 @@ namespace NN
     class TrainingParams
     {
         // default training parameter values
-        private const float DEFAULT_LEARNING_RATE   = 0.01f;
-        private const float DEFAULT_MOMENTUM        = 0.1f;
-        private const float DEFAULT_TARGET_COST     = 0.05f;
-        private const int DEFAULT_BATCH_SIZE        = 150;
-        private const int DEFAULT_MAX_EPOCH         = 10;
+        private const float DEFAULT_LEARNING_RATE = 0.01f;
+        private const float DEFAULT_MOMENTUM = 0.1f;
+        private const float DEFAULT_TARGET_COST = 0.05f;
+        private const int DEFAULT_BATCH_SIZE = 150;
+        private const int DEFAULT_MAX_EPOCH = 10;
 
         // class properties
 
@@ -21,19 +21,19 @@ namespace NN
         public float TargetCost { get; set; }
         public int BatchSize { get; set; }
         public int MaxEpoch { get; set; }
-            
+
 
         // constructors
 
         // default constructor
-        public TrainingParams 
-            ( 
+        public TrainingParams
+            (
             float iLearningRate = DEFAULT_LEARNING_RATE,
             float iMomentum = DEFAULT_MOMENTUM,
             float iTargetCost = DEFAULT_TARGET_COST,
             int iBatchSize = DEFAULT_BATCH_SIZE,
             int iMaxEpoch = DEFAULT_MAX_EPOCH
-            ) 
+            )
         {
             LearningRate = iLearningRate;
             Momentum = iMomentum;
@@ -49,7 +49,7 @@ namespace NN
         private const int NUM_TRAINING_IMAGES = 60000;
         private const int NUM_TEST_IMAGES = 10000;
 
-        public static void TrainNetwork ( ref NeuralNetwork net, TrainingParams trainingParams )
+        public static void TrainNetwork(ref NeuralNetwork net, TrainingParams trainingParams)
         {
             // read training data
             var data = MNISTReader.ReadTrainingData();
@@ -78,7 +78,7 @@ namespace NN
                 IEnumerator<Image> imgEnumerator = data.GetEnumerator();
 
                 // Epoch loop
-                while ( batchCount <= (NUM_TRAINING_IMAGES/trainingParams.BatchSize) )
+                while (batchCount <= (NUM_TRAINING_IMAGES / trainingParams.BatchSize))
                 {
                     int numCorrectThisBatch;
                     double avgCost;
@@ -131,9 +131,9 @@ namespace NN
 
                 // calculate average cost over entire epoch
                 double epochAvgCost = costSum / (double)numBatchesPerEpoch;
-                
+
                 // check if target cost is reached
-                if ( epochAvgCost <= trainingParams.TargetCost)
+                if (epochAvgCost <= trainingParams.TargetCost)
                     //  stop training
                     doneTraining = true;
 
@@ -149,10 +149,10 @@ namespace NN
             }
         }
 
-        public static void RunBatch 
+        public static void RunBatch
             (
-            ref NeuralNetwork net, 
-            TrainingParams trainingParams, 
+            ref NeuralNetwork net,
+            TrainingParams trainingParams,
             ref IEnumerator<Image> imgEnumerator,
             out double avgCost,
             out double accuracy,
@@ -165,9 +165,9 @@ namespace NN
 
             // initialise bias and weight delta storage
             Matrix[] accumulatedWeightChanges = new Matrix[net.getNumLayers()];
-            Matrix[] accumulatedBiasChanges   = new Matrix[net.getNumLayers()];
-            Matrix[] prevWeightChanges        = new Matrix[net.getNumLayers()];
-            Matrix[] prevBiasChanges          = new Matrix[net.getNumLayers()];
+            Matrix[] accumulatedBiasChanges = new Matrix[net.getNumLayers()];
+            Matrix[] prevWeightChanges = new Matrix[net.getNumLayers()];
+            Matrix[] prevBiasChanges = new Matrix[net.getNumLayers()];
             for (int i = 0; i < net.getNumLayers(); i++)
             {
                 Layer l = net.Layers[i];
@@ -176,9 +176,9 @@ namespace NN
                 accumulatedBiasChanges[i] = new Matrix(l.BM.Rows, 1);
                 prevBiasChanges[i] = new Matrix(l.BM.Rows, 1);
             }
-            
+
             // iterate through training data untill data end reached or batch size reached
-            while (imgEnumerator.MoveNext () && count <= trainingParams.BatchSize)
+            while (imgEnumerator.MoveNext() && count <= trainingParams.BatchSize)
             {
                 // prepare training example
                 Matrix input = null;
@@ -275,7 +275,7 @@ namespace NN
         /// </summary>
         /// <param name="prediction"> Network output matrix </param>
         /// <returns></returns>
-        public static int GetHighestOutputIndex ( Matrix prediction )
+        public static int GetHighestOutputIndex(Matrix prediction)
         {
             int prediction_int = 0;
 

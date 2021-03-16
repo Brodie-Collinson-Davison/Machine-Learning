@@ -43,10 +43,10 @@ class MainClass
         input = Console.ReadLine();
 
         Console.WriteLine("saving as {0}", input);
-        FileManager.SerializeAsJson(net, input);        
+        FileManager.SerializeAsJson(net, input);
     }
 
-    static float testNetwork ( NeuralNetwork net )
+    static float testNetwork(NeuralNetwork net)
     {
         var images = MNISTReader.ReadTestData();
 
@@ -57,7 +57,7 @@ class MainClass
         int upd_freq = 1000;
 
         // test all images
-        foreach ( var img in images )
+        foreach (var img in images)
         {
             // prep data
             Matrix input = null;
@@ -69,9 +69,9 @@ class MainClass
             float highestOutput = 0.0f;
             int prediction_int = 0;
 
-            for ( int i = 0; i < prediction.Rows; i ++ )
+            for (int i = 0; i < prediction.Rows; i++)
             {
-                if ( prediction.GetValue (i, 0) > highestOutput )
+                if (prediction.GetValue(i, 0) > highestOutput)
                 {
                     highestOutput = prediction.GetValue(i, 0);
                     prediction_int = i;
@@ -81,7 +81,7 @@ class MainClass
             if (prediction_int == img.label)
                 correct++;
 
-            if (count%upd_freq == 0)
+            if (count % upd_freq == 0)
             {
                 Console.WriteLine("{0} / {1}\t|\t{2}", correct, count, ((float)correct / (float)count) * 100);
             }
