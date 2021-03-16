@@ -8,16 +8,14 @@ namespace NN
     class TrainingParams
     {
         // default training parameter values
-        private const float DEFAULT_LEARNING_RATE   = 0.01f;
-        private const float DEFAULT_MOMENTUM        = 0.1f;
-        private const float DEFAULT_TARGET_COST     = 0.05f;
-        private const int DEFAULT_BATCH_SIZE        = 150;
-        private const int DEFAULT_MAX_EPOCH         = 10;
+        private const float DEFAULT_LEARNING_RATE = 0.01f;
+        private const float DEFAULT_TARGET_COST = 0.05f;
+        private const int DEFAULT_BATCH_SIZE = 150;
+        private const int DEFAULT_MAX_EPOCH = 10;
 
         // class properties
 
         public float LearningRate { get; set; }
-        public float Momentum { get; set; }
         public float TargetCost { get; set; }
         public int BatchSize { get; set; }
         public int MaxEpoch { get; set; }
@@ -29,14 +27,12 @@ namespace NN
         public TrainingParams 
             ( 
             float iLearningRate = DEFAULT_LEARNING_RATE,
-            float iMomentum = DEFAULT_MOMENTUM,
             float iTargetCost = DEFAULT_TARGET_COST,
             int iBatchSize = DEFAULT_BATCH_SIZE,
             int iMaxEpoch = DEFAULT_MAX_EPOCH
             ) 
         {
             LearningRate = iLearningRate;
-            Momentum = iMomentum;
             TargetCost = iTargetCost;
             BatchSize = iBatchSize;
             MaxEpoch = iMaxEpoch;
@@ -47,7 +43,6 @@ namespace NN
     class MNISTOptimiser
     {
         private const int NUM_TRAINING_IMAGES = 60000;
-        private const int NUM_TEST_IMAGES = 10000;
 
         public static void TrainNetwork ( ref NeuralNetwork net, TrainingParams trainingParams )
         {
@@ -55,17 +50,13 @@ namespace NN
             var data = MNISTReader.ReadTrainingData();
 
             bool doneTraining = false;
-            int numBatchesPerEpoch = NUM_TRAINING_IMAGES / trainingParams.BatchSize;
-            int numCorrect = 0;
-            int batchCount = 1;
+            int batchCount = 0;
             int epochCount = 0;
-
-            double costSum = 0;
 
             Stopwatch watch = new Stopwatch();
 
             // train network
-            while (!doneTraining) // Training loop
+            while (!doneTraining) // epoch loop
             {
                 // display epoch number
                 Console.SetCursorPosition(0, 0);
@@ -77,74 +68,31 @@ namespace NN
                 // get new enumerator through shuffled data
                 IEnumerator<Image> imgEnumerator = data.GetEnumerator();
 
-                // Epoch loop
-                while ( batchCount <= (NUM_TRAINING_IMAGES/trainingParams.BatchSize) )
+                while ( batchCount * trainingParams.BatchSize < NUM_TRAINING_IMAGES )
                 {
-                    int numCorrectThisBatch;
                     double avgCost;
                     double accuracy;
-                    float epochCompletion = (float)batchCount / (float)numBatchesPerEpoch;
 
-                    // perform a gradient descent step over a mini batch
                     RunBatch
                         (
                         ref net,
                         trainingParams,
                         ref imgEnumerator,
                         out avgCost,
-                        out accuracy,
-                        out numCorrectThisBatch
+                        out accuracy
                         );
 
-                    numCorrect += numCorrectThisBatch;
-
-                    // reset cursor position to write stats
                     Console.SetCursorPosition(0, 1);
+                    Console.WriteLine("Avg Cost: {0:F3} || Accuracy: {1:F3}", avgCost, accuracy);
+                    Console.WriteLine("Epoch Completion: {0:F2}", (float)(batchCount * trainingParams.BatchSize) / NUM_TRAINING_IMAGES);
 
-                    // Epoch progress bar
-                    int barSize = 25;
-                    Console.WriteLine("{0} / {1}", batchCount, numBatchesPerEpoch);
-                    Console.Write("[");
-                    for (int i = 0; i < barSize; i++)
-                    {
-                        if ((float)i / (float)barSize < epochCompletion)
-                            Console.Write("#");
-                        else
-                            Console.Write(" ");
-                    }
-                    Console.WriteLine("]\n");
 
-                    // Epoch output
-                    Console.WriteLine("\tEpoch:");
-                    Console.WriteLine("Avg Cost: {0:F5}", costSum / (double)batchCount);
-                    Console.WriteLine("Accuracy: {0:F1}%", 100.0f * (float)numCorrect / (float)(batchCount * trainingParams.BatchSize));
-
-                    Console.WriteLine("");
-
-                    // Batch output
-                    Console.WriteLine("\tBatch:");
-                    Console.WriteLine("Avg Cost: {0:F3}\nAccuracy: {1:F1}", avgCost, 100.0 * accuracy);
+                    if (avgCost <= trainingParams.TargetCost)
+                        doneTraining = true;
 
                     batchCount++;
-                    costSum += avgCost;
                 }
 
-                // calculate average cost over entire epoch
-                double epochAvgCost = costSum / (double)numBatchesPerEpoch;
-                
-                // check if target cost is reached
-                if ( epochAvgCost <= trainingParams.TargetCost)
-                    //  stop training
-                    doneTraining = true;
-
-                // check if reached epoch limit
-                if (epochCount >= trainingParams.MaxEpoch)
-                    doneTraining = true;
-
-                // reset epoch counters
-                costSum = 0;
-                batchCount = 1;
-                numCorrect = 0;
                 epochCount++;
             }
         }
@@ -155,26 +103,21 @@ namespace NN
             TrainingParams trainingParams, 
             ref IEnumerator<Image> imgEnumerator,
             out double avgCost,
-            out double accuracy,
-            out int numCorrect
+            out double accuracy
             )
         {
-            numCorrect = 0;
             int count = 1;
+            int numCorrect = 0;
             double costSum = 0;
 
             // initialise bias and weight delta storage
-            Matrix[] accumulatedWeightChanges = new Matrix[net.getNumLayers()];
-            Matrix[] accumulatedBiasChanges   = new Matrix[net.getNumLayers()];
-            Matrix[] prevWeightChanges        = new Matrix[net.getNumLayers()];
-            Matrix[] prevBiasChanges          = new Matrix[net.getNumLayers()];
+            Matrix[] weightChanges = new Matrix[net.getNumLayers()];
+            Matrix[] biasChanges = new Matrix[net.getNumLayers()];
             for (int i = 0; i < net.getNumLayers(); i++)
             {
                 Layer l = net.Layers[i];
-                accumulatedWeightChanges[i] = new Matrix(l.WM.Rows, l.WM.Cols);
-                prevWeightChanges[i] = new Matrix(l.WM.Rows, l.WM.Cols);
-                accumulatedBiasChanges[i] = new Matrix(l.BM.Rows, 1);
-                prevBiasChanges[i] = new Matrix(l.BM.Rows, 1);
+                weightChanges[i] = new Matrix(l.WM.Rows, l.WM.Cols);
+                biasChanges[i] = new Matrix(l.BM.Rows, 1);
             }
             
             // iterate through training data untill data end reached or batch size reached
@@ -187,8 +130,8 @@ namespace NN
 
                 // calculate cost and deltas
                 Matrix cost = null;
-                Matrix[] exampleOutput = null;
-                Matrix[] exampleDeltas = net.backProp(input, output, out exampleOutput, out cost);
+                Matrix[] exampleActivations = null;
+                Matrix[] exampleDeltas = net.backProp(input, output, out exampleActivations, out cost);
 
                 // cost
                 float sum = 0;
@@ -203,20 +146,11 @@ namespace NN
                 // delB(l) = layerDelta(l)
                 for (int i = net.getNumLayers() - 1; i >= 0; i--)
                 {
-                    Matrix dW = exampleDeltas[i] * exampleOutput[i].Transpose();
+                    Matrix dW = exampleDeltas[i] * exampleActivations[i].Transpose();
                     Matrix dB = exampleDeltas[i];
 
-                    // add momentum term using last changes
-                    dW += trainingParams.Momentum * prevWeightChanges[i];
-                    dB += trainingParams.Momentum * prevBiasChanges[i];
-
-                    // set past changes
-                    prevWeightChanges[i] = dW;
-                    prevBiasChanges[i] = dB;
-
-                    // stage weight and bias changes to be added
-                    accumulatedWeightChanges[i] += dW;
-                    accumulatedBiasChanges[i] += dB;
+                    weightChanges[i] += dW;
+                    biasChanges[i] += dB;
                 }
 
                 // check prediction
@@ -232,15 +166,15 @@ namespace NN
             // use accumulated changes and learning rate to get updated weights and biases
             for (int i = 0; i < net.getNumLayers(); i++)
             {
-                Matrix updW = net.Layers[i].WM - trainingParams.LearningRate * accumulatedWeightChanges[i];
-                Matrix updB = net.Layers[i].BM - trainingParams.LearningRate * accumulatedBiasChanges[i];
+                Matrix updW = net.Layers[i].WM - trainingParams.LearningRate * weightChanges[i];
+                Matrix updB = net.Layers[i].BM - trainingParams.LearningRate * biasChanges[i];
 
                 net.Layers[i].WM = updW;
                 net.Layers[i].BM = updB;
             }
 
             // set out variables
-            avgCost = costSum / (double)trainingParams.BatchSize;
+            avgCost = costSum / trainingParams.BatchSize;
             accuracy = (double)numCorrect / (double)trainingParams.BatchSize;
         }
 
