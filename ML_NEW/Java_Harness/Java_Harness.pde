@@ -12,7 +12,7 @@ int label;
 int[][] img;
 int idx;
 
-int brushSize = 20;
+int brushSize = 18;
 int sqrBrushSize;
 int pixelSize;
 
@@ -153,7 +153,7 @@ void setup ()
   // load network
   try
   {
-      net = new NN (FileIO.readJSONFileAsObject ("G:/Projects/ML/Machine-Learning/ML_NEW/Java_Harness/NN_Big_2.json"));
+      net = new NN (FileIO.readJSONFileAsObject ("G:/Projects/ML/Machine-Learning/ML_NEW/Java_Harness/NN_100_50.json"));
   }
   catch ( RuntimeException e )
   {
@@ -165,7 +165,7 @@ void draw ()
 {
   if ( mousePressed )
   {
-    drawCircleAroundCursor ( sqrBrushSize  );
+    drawCircleAroundCursor ( sqrBrushSize  ); 
   } 
 }
 

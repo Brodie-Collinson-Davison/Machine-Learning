@@ -22,7 +22,6 @@ namespace NN
         public int BatchSize { get; set; }
         public int MaxEpoch { get; set; }
 
-
         // constructors
 
         // default constructor
@@ -46,10 +45,11 @@ namespace NN
 
     class MNISTOptimiser
     {
+        // number of test images in the MNIST dataset
         private const int NUM_TRAINING_IMAGES = 60000;
         private const int NUM_TEST_IMAGES = 10000;
 
-        public static void TrainNetwork(ref NeuralNetwork net, TrainingParams trainingParams)
+        public static void TrainNetwork(ref NeuralNetwork net, TrainingParams trainingParams, string logFileName = null)
         {
             // read training data
             var data = MNISTReader.ReadTrainingData();
@@ -58,6 +58,7 @@ namespace NN
             int numBatchesPerEpoch = NUM_TRAINING_IMAGES / trainingParams.BatchSize;
             int numCorrect = 0;
             int batchCount = 1;
+            int stepCount = 0;
             int epochCount = 0;
 
             double costSum = 0;
@@ -125,7 +126,14 @@ namespace NN
                     Console.WriteLine("\tBatch:");
                     Console.WriteLine("Avg Cost: {0:F3}\nAccuracy: {1:F1}", avgCost, 100.0 * accuracy);
 
+                    // logging
+                    if (logFileName != null)
+                    {
+                        LogTrainingData(logFileName, stepCount, avgCost, accuracy);
+                    }
+
                     batchCount++;
+                    stepCount++;
                     costSum += avgCost;
                 }
 
@@ -178,7 +186,7 @@ namespace NN
             }
 
             // iterate through training data untill data end reached or batch size reached
-            while (imgEnumerator.MoveNext() && count <= trainingParams.BatchSize)
+            while (imgEnumerator.MoveNext() && count < trainingParams.BatchSize)
             {
                 // prepare training example
                 Matrix input = null;
@@ -210,7 +218,7 @@ namespace NN
                     dW += trainingParams.Momentum * prevWeightChanges[i];
                     dB += trainingParams.Momentum * prevBiasChanges[i];
 
-                    // set past changes
+                    // set past changes for momentum gradient descent
                     prevWeightChanges[i] = dW;
                     prevBiasChanges[i] = dB;
 
@@ -219,7 +227,7 @@ namespace NN
                     accumulatedBiasChanges[i] += dB;
                 }
 
-                // check prediction
+                // check if prediction is correct
                 int prediction_int = GetHighestOutputIndex(net.predict(input));
                 if (prediction_int == imgEnumerator.Current.label)
                 {
@@ -292,7 +300,7 @@ namespace NN
             return prediction_int;
         }
 
-        static void LogTrainingData(string fileName, int step, float cost, float accuracy)
+        static void LogTrainingData(string fileName, int step, double cost, double accuracy)
         {
             string data = string.Format($"{step},{cost},{accuracy}");
             FileManager.AppendToFile(fileName, data);

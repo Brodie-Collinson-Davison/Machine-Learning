@@ -21,6 +21,17 @@ namespace NN
             Inputs = new Matrix();
         }
 
+        public NeuralNetwork ( NeuralNetwork other )
+        {
+            // copy layers
+            this.Layers = new Layer[other.getNumLayers()];
+            for (int i = 0; i < other.getNumLayers(); i++)
+            {
+                this.Layers[i] = new Layer(other.Layers[i]);
+            }
+            Inputs = new Matrix (other.Inputs);
+        }
+
         /// <summary>
         /// Creates a new network with layers given in the args string
         /// E.G "3 5 2" will make a network with 3 inputs 1 hidden layer of size 5 and 2 output neurons 

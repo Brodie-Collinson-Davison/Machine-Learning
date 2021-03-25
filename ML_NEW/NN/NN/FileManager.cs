@@ -9,7 +9,7 @@ static public class FileManager
     {
         var options = new JsonSerializerOptions
         {
-            WriteIndented = true
+            WriteIndented = false
         };
         string jsonString = JsonSerializer.Serialize(obj, options);
         WriteFile(fileName, jsonString);

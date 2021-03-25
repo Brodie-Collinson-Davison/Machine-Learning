@@ -9,39 +9,46 @@ using NN;
 class MainClass
 {
     static void Main(string[] args)
+    { 
+        NeuralNetwork net = JsonSerializer.Deserialize<NeuralNetwork>
+            ( FileManager.ReadFile("net(1)_100_50.json") );
+        TrainingParams tParams = new TrainingParams(iMomentum: 0.75f, iMaxEpoch: 10);
+        
+        TrainNetwork(net, tParams);
+    }
+
+    static void TrainNetwork (NeuralNetwork net, TrainingParams trainingParams)
     {
-        // generate new network for mnist training
-        NeuralNetwork net = new NeuralNetwork("784 16 10", true);
-
-        float accuracy_untrained = testNetwork(net);
+        // test network before training for baseline accuracy
         float accuracy_trained = 0;
+        float accuracy_untrained = testNetwork(net);
 
+        // ask if should log training 
         Console.Clear();
         Console.WriteLine("Log training (y/n)?");
         string input = Console.ReadLine();
         string logFileName = null;
-        bool shouldLog = false;
         if (input == "y")
         {
-            shouldLog = true;
-
-            Console.Write("Enter log file name (.csv): ");
+            Console.WriteLine("Enter log file name (.csv): ");
             logFileName = Console.ReadLine();
         }
 
         Console.Clear();
 
-        // train network with default optimiser parameters
-        TrainingParams defaultParams = new TrainingParams(iTargetCost: 0.050f, iMomentum: 0.25f);
-        MNISTOptimiser.TrainNetwork(ref net, defaultParams);
+        // train network
+        MNISTOptimiser.TrainNetwork(ref net, trainingParams, logFileName);
         Console.WriteLine("Training done!");
 
+        // re-test trained network
         accuracy_trained = testNetwork(net);
         Console.WriteLine("Untrained: {0:F3}\nTrained: {1:F3}", accuracy_untrained, accuracy_trained);
 
+        // get save file name
         Console.WriteLine("Save network as: ");
         input = Console.ReadLine();
 
+        // save nn
         Console.WriteLine("saving as {0}", input);
         FileManager.SerializeAsJson(net, input);
     }

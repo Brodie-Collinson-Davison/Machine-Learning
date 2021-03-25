@@ -19,6 +19,13 @@ namespace NN
             BM = new Matrix();
         }
 
+        public Layer (Layer other)
+        {
+            this.Size = other.Size;
+            this.WM = new Matrix (other.WM);
+            this.BM = new Matrix (other.BM);
+        }
+
         public Layer(int size, int numWeights)
         {
             Size = size;
