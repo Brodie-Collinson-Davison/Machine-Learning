@@ -1,15 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace NN
 {
-    class Layer
+    [Serializable]
+    public class Layer
     {
+        [JsonInclude]
         public int Size { get; set; }
+        [JsonInclude]
         public Matrix WM { get; set; }
+        [JsonInclude]
         public Matrix BM { get; set; }
 
         public Layer()

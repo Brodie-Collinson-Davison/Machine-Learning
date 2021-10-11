@@ -2,10 +2,8 @@
 
 static public class Mathf
 {
+    // static random class to avoid constant reseeding
 	static Random rng = new Random(DateTime.Now.Second);
-
-    static float rng_mean = 0.0f;
-    static float rng_stdDev = 1.0f;
 
 	static public float Sigmoid(float x, bool derivative = false)
 	{
@@ -15,6 +13,7 @@ static public class Mathf
             return (Sigmoid(x) * (1f - Sigmoid(x)));
 	}
 
+    // Sigmoid activation function 
 	static public Matrix Sigmoid(Matrix m, bool derivative = false)
 	{
 		Matrix mat = m;
@@ -32,19 +31,21 @@ static public class Mathf
 		return mat;
 	}
 
+    // returns a uniformly distributed float between min and max
 	static public float RandomFloat(float min, float max)
 	{
 		return (float)rng.NextDouble () * (max - min) + min;
 	}
 
-    static public float rng_normalFloat ()
+    // Returns normally distributed random number
+    static public float rng_normalFloat (float mean, float stdDev)
     {
         double u1 = 1.0 - rng.NextDouble(); //uniform(0,1] random doubles
         double u2 = 1.0 - rng.NextDouble();
         double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) *
                      Math.Sin(2.0 * Math.PI * u2); //random normal(0,1)
         double randNormal =
-                     rng_mean + rng_stdDev * randStdNormal; //random normal(mean,stdDev^2)
+                     mean + stdDev * randStdNormal; //random normal(mean,stdDev^2)
         return (float)randNormal;
     }
 }

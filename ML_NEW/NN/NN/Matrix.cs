@@ -1,15 +1,18 @@
 ﻿using System;
+using System.Text.Json.Serialization;
 
 [Serializable]
 public class Matrix
 {
+	[JsonInclude]
 	public int Rows { get; set; }
+	[JsonInclude]
 	public int Cols { get; set; }
-
+	[JsonInclude]
 	public float[] values { get; set; }
 
     //
-    //Constructors
+    //	****	CONSTRUCTORS	****
     //
 
 	public Matrix ()
@@ -105,6 +108,10 @@ public class Matrix
 		return matrix;
 	}
 
+	//
+	//	****	ACCESSOR METHODS	****
+	//
+
 	public float GetValue(int row, int column)
 	{
 		if (row < Rows && column < Cols)
@@ -113,46 +120,8 @@ public class Matrix
 		return 0;
 	}
 
-	public void SetValue(int row, int column, float value)
-	{
-		if (row < Rows && column < Cols)
-			values [row * Cols + column] = value;
-	}
-
-    public void ewPow ( float p )
-    {
-        int idx = 0;
-        foreach ( float f in values )
-        {
-            values[idx] = (float)Math.Pow(values[idx], p);
-            idx++;
-        }
-    }
-
-    //
-    //  Operations
-    //
-
-	public Matrix Dot (Matrix m)
-	{
-		Matrix v = this;
-
-		if (Rows == m.Rows && Cols == m.Cols) {
-			
-			for (int i = 0; i < Rows; i++) {
-				for (int j = 0; j < Cols; j++) {
-
-					v.SetValue (i, j, GetValue (i, j) * m.GetValue (i, j));
-				}
-			}
-
-			return v;
-		}
-
-        string dimensionDebug = "M1 = " + v.Rows + "x" + v.Cols + " | M2 = " + m.Rows + "x" + m.Cols;
-        throw new System.ArgumentException("matrix opperation m1 . m2 is invalid! " + dimensionDebug);
-	}
-
+	// Returns the transposed matrix
+	// M[i,j] -> M[j,i]
 	public Matrix Transpose()
 	{
 		Matrix v = new Matrix(Cols, Rows, new float[Rows * Cols]);
@@ -166,27 +135,81 @@ public class Matrix
 		return v;
 	}
 
+	// Elementwise Power
+	// Raises each element of the matrix to the power p
+    public Matrix Pow ( float p )
+    {
+		Matrix result = new Matrix (this);
+
+		for (int i = 0; i < values.Length; i ++)
+		{
+			result.values [i] = (float)Math.Pow (values[i], p);
+		}
+
+		return result;
+    }
+
+	//
+	//	****	MUTATOR METHODS	   ****
+	//
+
+	public void SetValue(int row, int column, float value)
+	{
+		if (row < Rows && column < Cols)
+			values [row * Cols + column] = value;
+	}
+
+	// Calculates the hadamard 'dot' product between this and m
+	// Will modify the matrix called from
+	public Matrix Dot (Matrix m)
+	{
+		Matrix v = new Matrix (this);
+
+		if (Rows == m.Rows && Cols == m.Cols) {
+			
+			for (int i = 0; i < Rows; i++) {
+				for (int j = 0; j < Cols; j++) {
+
+					v.SetValue (i, j, GetValue (i, j) * m.GetValue (i, j));
+				}
+			}
+			return v;
+		}
+
+        string dimensionDebug = "M1 = " + v.Rows + "x" + v.Cols + " | M2 = " + m.Rows + "x" + m.Cols;
+        throw new System.ArgumentException("matrix opperation m1 . m2 is invalid! " + dimensionDebug);
+	}
+
+
     //
-    //Operator overloads
+    //	****	OPERATOR OVERLOADS	****	
     //
 
+	// Matrix addition operator (adds each element of same size matrices)
+	// Returns a new matrix with values m1 + m2
 	static public Matrix operator + (Matrix m1, Matrix m2)
 	{
+		// addition of matrices only possible when matrices have same size 
 		if (m1.Rows == m2.Rows && m1.Cols == m2.Cols) {
 			float[] newValues = new float[m1.values.Length];
 
 			for (int i = 0; i < newValues.Length; i++) {
 				newValues [i] = m1.values [i] + m2.values [i];
 			}
+
 			return new Matrix (m1.Rows, m1.Cols, newValues);
 		}
 
+		// debug for inconsistent dimensions
         string dimensionDebug = "M1 = " + m1.Rows + "x" + m1.Cols + " | M2 = " + m2.Rows + "x" + m2.Cols;
         throw new System.ArgumentException("matrix opperation m1 + m2 is invalid! " + dimensionDebug);
 	}
 
+	// Matrix subtraction operator (subtracts each element of same size matrices)
+	// Returns a new matrix with values m1 - m2
     static public Matrix operator - (Matrix m1, Matrix m2)
     {
+		// check if dimensions are consistent
         if (m1.Rows == m2.Rows && m1.Cols == m2.Cols)
         {
             float[] newValues = new float[m1.values.Length];
@@ -195,19 +218,24 @@ public class Matrix
             {
                 newValues[i] = m1.values[i] - m2.values[i];
             }
+
             return new Matrix(m1.Rows, m1.Cols, newValues);
         }
 
+		// debug for inconsistent dimensions
         string dimensionDebug = "M1 = " + m1.Rows + "x" + m1.Cols + " | M2 = " + m2.Rows + "x" + m2.Cols;
         throw new System.ArgumentException("matrix opperation m1 - m2 is invalid! " + dimensionDebug);
     }
 
+	// Matrix multiplication operator (multiplies two matrices)
+	// Returns new Matrix with values m1 * m2
 	static public Matrix operator * (Matrix m1, Matrix m2)
 	{
+		// multiplication only possible if size matches
 		if (m1.Cols == m2.Rows) {
 
 			float[] newValues = new float[m1.Rows * m2.Cols];
-
+			
 			for (int i = 0; i < m1.Rows; i++) {
 				for (int j = 0; j < m2.Cols; j++) {
 
@@ -228,6 +256,8 @@ public class Matrix
         throw new System.ArgumentException("matrix opperation M1 * M2 is invalid! " + dimensionDebug);
 	}
 
+	// Number * Matrix operator
+	// 
 	static public Matrix operator * (float f, Matrix m)
 	{
 		for (int i = 0; i < m.values.Length; i++) {
@@ -237,26 +267,6 @@ public class Matrix
 
 		return m;
 	}
-
-    static public Matrix operator + (float f, Matrix m)
-    {
-        for (int i = 0; i < m.values.Length; i ++)
-        {
-            m.values[i] += f;
-        }
-
-        return m;
-    }
-
-    static public Matrix operator - (float f, Matrix m)
-    {
-        for (int i = 0; i < m.values.Length; i ++)
-        {
-            m.values[i] -= f;
-        }
-
-        return m;
-    }
 
 	public override string ToString ()
 	{

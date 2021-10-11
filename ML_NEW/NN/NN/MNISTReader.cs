@@ -7,14 +7,36 @@ namespace NN
 {
     public class MNISTReader
     {
-        private const string TrainImages = "/../../../../../../MNIST_Dataset/train-images.idx3-ubyte";
-        private const string TrainLabels = "/../../../../../../MNIST_Dataset/train-labels.idx1-ubyte";
-        private const string TestImages = "/../../../../../../MNIST_Dataset/t10k-images.idx3-ubyte";
-        private const string TestLabels = "/../../../../../../MNIST_Dataset/t10k-labels.idx1-ubyte";
+        private const string TRAIN_lABELS_FILE_NAME = "MNIST_Dataset/train-labels.idx1-ubyte";
+        private const string TRAIN_IMAGES_FILE_NAME = "MNIST_Dataset/train-images.idx3-ubyte";
+        private const string TEST_IMAGES_FILE_NAME = "MNIST_Dataset/t10k-images.idx3-ubyte";
+        private const string TEST_LABELS_FILE_NAME = "MNIST_Dataset/t10k-labels.idx1-ubyte";
+
+        /// <summary>
+        /// Ensures the MNIST dataset is accessible
+        /// </summary>
+        /// <returns> true if can access </returns>
+        public static bool CanAccessMNISTData ()
+        {
+            bool success = false;
+
+            try
+            {
+                // check if directory exists
+                if (Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), "MNIST_Dataset")))
+                    success = true;
+            }
+            catch (Exception e)
+            {
+                UI.Display_Error(e.Message);
+            }
+
+            return success;
+        }
 
         public static IEnumerable<Image> ReadTrainingData()
         {
-            foreach (var item in Read(TrainImages, TrainLabels))
+            foreach (var item in Read(TRAIN_IMAGES_FILE_NAME, TRAIN_lABELS_FILE_NAME))
             {
                 yield return item;
             }
@@ -22,7 +44,7 @@ namespace NN
 
         public static IEnumerable<Image> ReadTestData()
         {
-            foreach (var item in Read(TestImages, TestLabels))
+            foreach (var item in Read(TEST_IMAGES_FILE_NAME, TEST_LABELS_FILE_NAME))
             {
                 yield return item;
             }
@@ -30,12 +52,15 @@ namespace NN
 
         private static IEnumerable<Image> Read(string imagesPath, string labelsPath)
         {
-            FileStream labelFStream = new FileStream((Environment.CurrentDirectory  + labelsPath), FileMode.Open);
-            FileStream imagesFStream = new FileStream((Environment.CurrentDirectory + imagesPath), FileMode.Open);
+            // open file streams
+            FileStream labelFStream = new FileStream(labelsPath, FileMode.Open);
+            FileStream imagesFStream = new FileStream(imagesPath, FileMode.Open);
 
+            // create binary readers
             BinaryReader labels = new BinaryReader(labelFStream);
             BinaryReader images = new BinaryReader(imagesFStream);
 
+            // read data as per instructions on: http://yann.lecun.com/exdb/mnist/
             int magicNumber = images.ReadBigInt32();
             int numberOfImages = images.ReadBigInt32();
             int width = images.ReadBigInt32();
@@ -63,6 +88,7 @@ namespace NN
         }
     }
 
+    // class to contain MNIST images
     public class Image
     {
         public byte label { get; set; }

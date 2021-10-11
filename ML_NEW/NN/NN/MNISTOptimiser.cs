@@ -5,14 +5,14 @@ using System.Diagnostics;
 
 namespace NN
 {
-    class TrainingParams
+    public class TrainingParams
     {
         // default training parameter values
         private const float DEFAULT_LEARNING_RATE = 0.01f;
-        private const float DEFAULT_MOMENTUM = 0.1f;
-        private const float DEFAULT_TARGET_COST = 0.05f;
+        private const float DEFAULT_MOMENTUM = 0.5f;
+        private const float DEFAULT_TARGET_COST = 0.1f;
         private const int DEFAULT_BATCH_SIZE = 150;
-        private const int DEFAULT_MAX_EPOCH = 10;
+        private const int DEFAULT_MAX_EPOCH = 3;
 
         // class properties
 
@@ -41,14 +41,104 @@ namespace NN
             MaxEpoch = iMaxEpoch;
         }
 
+        // copy ctor
+        public TrainingParams (TrainingParams other)
+        {
+            LearningRate = other.LearningRate;
+            Momentum = other.Momentum;
+            TargetCost = other.TargetCost;
+            BatchSize = other.BatchSize;
+            MaxEpoch = other.MaxEpoch;
+        }
+
+        public override String ToString ()
+        {
+            String str = "Learning Rate: " + LearningRate;
+            str += "\tMomentum: " + Momentum;
+            str += "\tTarget Cost: " + TargetCost;
+            str += "\tBatchSize: " + BatchSize;
+            str += "\tMaxEpoch: " + MaxEpoch;
+
+            return str;
+        }
+
     }// TrainingParams{}
 
     class MNISTOptimiser
     {
-        // number of test images in the MNIST dataset
+        // number of images in each of the respective MNIST datasets
         private const int NUM_TRAINING_IMAGES = 60000;
         private const int NUM_TEST_IMAGES = 10000;
 
+        /// <summary>
+        /// Tests the given neural network over the entire test dataset
+        /// </summary>
+        /// <param name="net"></param>
+        /// <returns> accuracy of the network </returns>
+        public static float TestNetwork(NeuralNetwork net)
+        {
+            // read test data
+            var images = MNISTReader.ReadTestData();
+
+            float accuracy = 0.0f;
+            int count = 1;
+            int correct = 0;
+
+            // magic number
+            // specifies the number of images to test between displaying current accuracy
+            const int upd_freq = 100;
+
+            // iterate over test data
+            foreach (var img in images)
+            {
+                // prep image
+                Matrix input = null;
+                Matrix target = null;
+                MNISTOptimiser.processImg(img, out input, out target);
+
+                // get prediction
+                Matrix prediction = net.predict(input);
+                float highestOutput = 0.0f;
+                int prediction_int = 0;
+                for (int i = 0; i < prediction.Rows; i++)
+                {
+                    if (prediction.GetValue(i, 0) > highestOutput)
+                    {
+                        highestOutput = prediction.GetValue(i, 0);
+                        prediction_int = i;
+                    }
+                }
+
+                // check if prediction is correct
+                if (prediction_int == img.label)
+                    correct++;
+
+                // display testing progress
+                if (count % upd_freq == 0)
+                {
+                    // progress bar
+                    UI.DisplayProgressBar((float)count / (float)NUM_TEST_IMAGES);
+                    Console.Write("Correct: {0:000} / Total: {1}\t ||\tAccuracy = {2:0.00}%", correct, count, ((float)correct / (float)count) * 100);
+                    Console.CursorLeft = 0;
+                    Console.CursorTop -= 2;
+                }
+
+                count++;
+            }
+
+            // calculate accuracy
+            accuracy = (float)correct / (float)count;
+            accuracy *= 100;
+
+            return accuracy;
+        }
+
+        /// <summary>
+        /// Train a neural network using momentum based batched gradient descent
+        /// </summary>
+        /// <param name="net"> network to train </param>
+        /// <param name="trainingParams"></param>
+        /// <param name="logFileName"> if specified the training will be logged to this file </param>
         public static void TrainNetwork(ref NeuralNetwork net, TrainingParams trainingParams, string logFileName = null)
         {
             // read training data
@@ -59,18 +149,17 @@ namespace NN
             int numCorrect = 0;
             int batchCount = 1;
             int stepCount = 0;
-            int epochCount = 0;
+            int epochCount = 1;
 
             double costSum = 0;
-
-            Stopwatch watch = new Stopwatch();
 
             // train network
             while (!doneTraining) // Training loop
             {
-                // display epoch number
-                Console.SetCursorPosition(0, 0);
-                Console.WriteLine("Epoch: " + epochCount);
+                // display epoch number before running epoch
+                Console.Clear();
+                UI.SkpLn(2);
+                UI.DisplayCentered($"Current Epoch: {epochCount} / {trainingParams.MaxEpoch}");
 
                 // shuffle data at each epoch
                 data = data.Shuffle();
@@ -86,7 +175,7 @@ namespace NN
                     double accuracy;
                     float epochCompletion = (float)batchCount / (float)numBatchesPerEpoch;
 
-                    // perform a gradient descent step over a mini batch
+                    // perform a gradient descent step over a batch
                     RunBatch
                         (
                         ref net,
@@ -100,30 +189,23 @@ namespace NN
                     numCorrect += numCorrectThisBatch;
 
                     // reset cursor position to write stats
-                    Console.SetCursorPosition(0, 1);
+                    Console.SetCursorPosition(0, 3);
 
                     // Epoch progress bar
-                    int barSize = 25;
-                    Console.WriteLine("{0} / {1}", batchCount, numBatchesPerEpoch);
-                    Console.Write("[");
-                    for (int i = 0; i < barSize; i++)
-                    {
-                        if ((float)i / (float)barSize < epochCompletion)
-                            Console.Write("#");
-                        else
-                            Console.Write(" ");
-                    }
-                    Console.WriteLine("]\n");
+                    UI.DisplayCentered ($"{batchCount} / {numBatchesPerEpoch}");
+                    UI.DisplayProgressBar(epochCompletion);
+
+                    UI.SkpLn(5);
 
                     // Epoch output
-                    Console.WriteLine("\tEpoch:");
+                    UI.DisplayCentered("EPOCH");
                     Console.WriteLine("Avg Cost: {0:F5}", costSum / (double)batchCount);
                     Console.WriteLine("Accuracy: {0:F1}%", 100.0f * (float)numCorrect / (float)(batchCount * trainingParams.BatchSize));
 
-                    Console.WriteLine("");
+                    UI.SkpLn(2);
 
                     // Batch output
-                    Console.WriteLine("\tBatch:");
+                    UI.DisplayCentered("BATCH");
                     Console.WriteLine("Avg Cost: {0:F3}\nAccuracy: {1:F1}", avgCost, 100.0 * accuracy);
 
                     // logging
@@ -142,7 +224,6 @@ namespace NN
 
                 // check if target cost is reached
                 if (epochAvgCost <= trainingParams.TargetCost)
-                    //  stop training
                     doneTraining = true;
 
                 // check if reached epoch limit
@@ -154,9 +235,19 @@ namespace NN
                 batchCount = 1;
                 numCorrect = 0;
                 epochCount++;
-            }
-        }
+            
+            }//training loop
+        }//TrainNetwork ()
 
+        /// <summary>
+        /// Run a batch of predictions to perform a gradient descent step
+        /// </summary>
+        /// <param name="net"></param>
+        /// <param name="trainingParams"></param>
+        /// <param name="imgEnumerator"> reference to the enumerable list of Images </param>
+        /// <param name="avgCost"></param>
+        /// <param name="accuracy"></param>
+        /// <param name="numCorrect"></param>
         public static void RunBatch
             (
             ref NeuralNetwork net,
@@ -185,7 +276,7 @@ namespace NN
                 prevBiasChanges[i] = new Matrix(l.BM.Rows, 1);
             }
 
-            // iterate through training data untill data end reached or batch size reached
+            // iterate through training data until EOF or batch size reached
             while (imgEnumerator.MoveNext() && count < trainingParams.BatchSize)
             {
                 // prepare training example
@@ -198,19 +289,19 @@ namespace NN
                 Matrix[] exampleOutput = null;
                 Matrix[] exampleDeltas = net.backProp(input, output, out exampleOutput, out cost);
 
-                // cost
+                // sum output cost to get total network cost for the example
                 float sum = 0;
-                for (int i = 0; i < 10; i++)
+                for (int i = 0; i < net.Layers[net.Layers.Length - 1].Size; i++)
                 {
                     sum += cost.GetValue(i, 0);
                 }
                 costSum += sum;
 
-                // accumulate weighta and bias changes
-                // delW(l) = layerDelta(l) * activations(l-1)
-                // delB(l) = layerDelta(l)
+                // accumulate weight and bias changes
                 for (int i = net.getNumLayers() - 1; i >= 0; i--)
                 {
+                    // delW(l) = layerDelta(l) * activations(l-1)[T]
+                    // delB(l) = layerDelta(l)
                     Matrix dW = exampleDeltas[i] * exampleOutput[i].Transpose();
                     Matrix dB = exampleDeltas[i];
 
@@ -279,7 +370,7 @@ namespace NN
 
         /// <summary>
         /// Returns the index of the highest output value.
-        /// Represents the predicted digit 
+        /// Represents the predicted of a classifier
         /// </summary>
         /// <param name="prediction"> Network output matrix </param>
         /// <returns></returns>
@@ -300,9 +391,16 @@ namespace NN
             return prediction_int;
         }
 
+        /// <summary>
+        /// Appends to a log file the gradient descent step data provided
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <param name="step"></param>
+        /// <param name="cost"></param>
+        /// <param name="accuracy"></param>
         static void LogTrainingData(string fileName, int step, double cost, double accuracy)
         {
-            string data = string.Format($"{step},{cost},{accuracy}");
+            String data = string.Format($"{step},{cost},{accuracy}");
             FileManager.AppendToFile(fileName, data);
         }
     }

@@ -6,19 +6,6 @@ public class NN
     int size;
     public Matrix[] weights;
     public Matrix[] biases;
-    
-    public static void main (String[] args )
-    {
-        //NN test
-        NN net = new NN (FileIO.readJSONFileAsObject
-        ("G:/Projects/ML/Machine-Learning/ML_NEW/Java_Harness/network_trained.json"));
-
-        int[] labels = Formatter.getLabels ();
-        List<int[][]> images = Formatter.getImages ();
-        
-        Matrix input = Formatter.formatInput (images.get(0));
-        Matrix prediciton = net.predict (input);
-    }
 
     public NN (JSONObject obj)
     {

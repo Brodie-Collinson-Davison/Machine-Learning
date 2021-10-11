@@ -3,16 +3,16 @@ import java.util.List;
 
 public class Formatter {
     
-    private static final String MNIST_TEST_LABELS_PATH = "G:/Projects/ML/Machine-Learning/ML_NEW/Java_Harness/train-labels.idx1-ubyte";
-    private static final String MNIST_TEST_IMAGES_PATH = "G:/Projects/ML/Machine-Learning/ML_NEW/Java_Harness/train-images.idx3-ubyte";
+    private static final String MNIST_LABELS_PATH = "/MNIST_Dataset/train-labels.idx1-ubyte";
+    private static final String MNIST_IMAGES_PATH = "/MNIST_Dataset/train-images.idx3-ubyte";
 
-    public static int[] getLabels () throws RuntimeException
+    public static int[] getLabels (String pathToCurDir) throws RuntimeException
     {
         int [] labels = null; 
         
         try
         {
-            labels = MnistReader.getLabels ( MNIST_TEST_LABELS_PATH );
+            labels = MnistReader.getLabels ( pathToCurDir.concat(MNIST_LABELS_PATH) );
         }
         catch ( Exception e )
         {
@@ -22,13 +22,13 @@ public class Formatter {
         return labels; 
     }
 
-    public static List<int[][]> getImages ()
+    public static List<int[][]> getImages (String pathToCurDir)
     {
         List<int[][]> images = null;
 
         try
         {
-            images = MnistReader.getImages ( MNIST_TEST_IMAGES_PATH );
+            images = MnistReader.getImages ( pathToCurDir.concat(MNIST_IMAGES_PATH) );
         }
         catch ( Exception e )
         {

@@ -5,14 +5,16 @@ using System.Text.Json.Serialization;
 namespace NN
 {
     [Serializable]
-    class NeuralNetwork 
+    public class NeuralNetwork 
     {
-        [JsonIgnore]
+        [JsonInclude]
         public Matrix Inputs { get; set; }
         [JsonInclude]
         public Layer[] Layers { get; set; }
 
-        // constructors
+        //
+        //  ****    CONSTRUCTORS    ****
+        //
 
         // default constructor
         public NeuralNetwork ()
@@ -21,6 +23,7 @@ namespace NN
             Inputs = new Matrix();
         }
 
+        // copy ctor
         public NeuralNetwork ( NeuralNetwork other )
         {
             // copy layers
@@ -34,12 +37,16 @@ namespace NN
 
         /// <summary>
         /// Creates a new network with layers given in the args string
-        /// E.G "3 5 2" will make a network with 3 inputs 1 hidden layer of size 5 and 2 output neurons 
+        /// E.G "3 5 2" will make a network with 3 inputs 1 hidden layer with 5 neurons and 2 output neurons 
         /// </summary>
         /// <param name="args">Space separated integers representing layer sizes</param>
-        /// <param name="randomise"> if true, weights will be randomised for the network </param>
-        public NeuralNetwork(string args, bool randomise = false)
+        /// <param name="randomize"> if true, weights will be randomized for the network </param>
+        public NeuralNetwork(string args, bool randomize = false)
         {
+            // best practice is to keep weights centered around 0 and not small
+            const float randomization_std_dev = 0.85f;
+            const float randomization_mean = 0;
+
             int[] layerSizes;
 
             // parse args string
@@ -52,49 +59,60 @@ namespace NN
                 {
                     layerSizes[i] = int.Parse(tokens[i]);
                 }
-            }
-            catch (ArgumentException e)
-            {
-                layerSizes = null;
-                Console.WriteLine(e.Message);
-            }
 
-            // init inputs
-            Inputs = new Matrix(layerSizes[0], 1);
+                // init inputs
+                Inputs = new Matrix(layerSizes[0], 1);
 
-            // init hidden & output layer
-            Layers = new Layer[layerSizes.Length - 1];
-            for (int i = 1; i < layerSizes.Length; i++)
-            {
-                Layers[i-1] = new Layer(layerSizes[i], layerSizes[i - 1]);
-            }
-
-            if ( randomise )
-            {
-                // gen random weights
-                // weights are normally distributed 
-                // weight magnitudes are normalised by the sqrt(layer size) to avoid large outputs
-                for ( int idx = 0; idx < Layers.Length; idx ++)
+                // init hidden & output layer
+                Layers = new Layer[layerSizes.Length - 1];
+                for (int i = 1; i < layerSizes.Length; i++)
                 {
-                    Matrix mat = Layers[idx].WM;
-
-                    for ( int i = 0; i < mat.Rows; i ++ )
-                    {
-                        for ( int j = 0; j < mat.Cols; j ++ )
-                        { 
-                            float val = Mathf.rng_normalFloat();
-                            val /= (float)Math.Sqrt(mat.Rows);
-                            mat.SetValue(i, j, val);
-                        }
-                    }
-
-                    Layers[idx].WM = mat;
+                    Layers[i - 1] = new Layer(layerSizes[i], layerSizes[i - 1]);
                 }
+
+                // gen random weights
+                if (randomize)
+                {
+                    // go through each layer's weight matrix
+                    for (int idx = 0; idx < Layers.Length; idx++)
+                    {
+                        Matrix mat = Layers[idx].WM;
+
+                        for (int i = 0; i < mat.Rows; i++)
+                        {
+                            for (int j = 0; j < mat.Cols; j++)
+                            {
+                                // weights are normally distributed 
+                                float val = Mathf.rng_normalFloat(randomization_mean, randomization_std_dev);
+
+                                // weight magnitudes are normalized by the sqrt(layer size) to avoid large outputs
+                                val /= (float)Math.Sqrt(mat.Rows);
+                                mat.SetValue(i, j, val);
+                            }
+                        }
+
+                        // update weight matrix with random values
+                        Layers[idx].WM = mat;
+                    }
+                }
+
+            }
+            catch (Exception e)
+            {
+                Layers = new Layer[0];
+                Inputs = new Matrix();
+
+                Console.WriteLine(e.Message);
             }
 
         }// ctor(string)
 
         // accessors
+
+        public bool isEmpty ()
+        {
+            return getNumLayers() == 0;
+        }
 
         public int getNumLayers ()
         {
@@ -104,7 +122,7 @@ namespace NN
         // NN functions
 
         /// <summary>
-        /// Returns the prediction (output) matrix for the given input
+        /// Returns the prediction (output) matrix for the given input by propagating the signal through the network
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
@@ -127,11 +145,12 @@ namespace NN
         /// Records all layer activations (including the input) and saves them in layerActivations
         /// </summary>
         /// <param name="input"></param>
-        /// <param name="target"></param>
+        /// <param name="target"> Expected value </param>
         /// <param name="layerActivations"> Record of all inputs to layers </param>
         /// <returns></returns>
-        public Matrix outputCost ( Matrix input, Matrix target, out Matrix[] layerActivations )
+        public Matrix predict_cost ( Matrix input, Matrix target, out Matrix[] layerActivations )
         {
+            //prepare inputs
             this.Inputs = input;
             Matrix activation = input;
             layerActivations = new Matrix[Layers.Length+1];
@@ -146,7 +165,7 @@ namespace NN
 
             // C = 1/2 * (Y-A)^2
             Matrix cost = activation - target;
-            cost.ewPow(2);
+            cost = cost.Pow(2);
             cost = 0.5f * cost;
             return cost;
         }
@@ -165,11 +184,13 @@ namespace NN
             Matrix[] layerDeltas = new Matrix[Layers.Length];
 
             // calculate cost and its derivative w.r.t activations
-            costMat = outputCost(input, target, out layerActivations);
+            costMat = predict_cost(input, target, out layerActivations);
+            // C(t)     = 1/2 * (y - t)^2
+            // C'(t)    = y - t
             Matrix delCost = layerActivations[Layers.Length] - target;
 
-            // calc output layer delta
-            // del(L) = (A(L) - Y) o S' (Z(L))
+            // calculate output layer delta
+            // del(L) = (A(L) - Y) * S'(Z(L))
             Matrix prevDelta = delCost.Dot(Mathf.Sigmoid(Layers[Layers.Length - 1].weightedSum(layerActivations[Layers.Length - 1]), true));
             layerDeltas[Layers.Length - 1] = prevDelta;
 

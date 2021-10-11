@@ -2,15 +2,46 @@
 using System.IO;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using NN;
 
 static public class FileManager
 {
+    static public void MakeDirectory (String name, String path)
+    {
+        String fp = System.IO.Path.Combine(path, name);
+        Directory.CreateDirectory(fp);
+    }
+
+    // Return a NeuralNetwork object from a json file
+    static public NeuralNetwork DeserializeJSON ( String fileName )
+    {
+        NeuralNetwork net;
+
+        try
+        {
+            String jsonString = File.ReadAllText(fileName);
+            net = JsonSerializer.Deserialize<NeuralNetwork>(jsonString);
+        }
+        catch (Exception e)
+        {
+            // ensure null value
+            net = null;
+            UI.Display_Error(e.Message);
+        }
+
+        return net;
+    }
+
+    // Save a NeuralNetwork object to a JSON file
     static public void SerializeAsJson ( Object obj, string fileName )
     {
         var options = new JsonSerializerOptions
         {
             WriteIndented = false
         };
+
+        // use inbuilt .net json serializer
         string jsonString = JsonSerializer.Serialize(obj, options);
         WriteFile(fileName, jsonString);
     }
