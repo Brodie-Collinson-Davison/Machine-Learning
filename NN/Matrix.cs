@@ -153,6 +153,23 @@ public class Matrix
         }
 	}
 
+    /// <summary>
+    /// Scrambles the values of the matrix with random normally distributed values 
+    /// </summary>
+    /// <param name="mean">mean of the random values</param>
+    /// <param name="stdDev">random value standard deviation</param>
+    public static Matrix Scrambled (int rows, int cols, float mean = 0, float stdDev = 1)
+    {
+        Matrix mat = new Matrix(rows, cols);
+
+        for (int i = 0; i < mat.values.Length; i ++ )
+        {
+            mat.values[i] = Mathf.rng_normalFloat(mean, stdDev);
+        }
+
+        return mat;
+    }
+
 	/// <summary>
 	/// Creates a square diagonal matrix with ones along the main diagonal
 	/// </summary>
@@ -402,32 +419,35 @@ public class Matrix
 	/// <returns></returns>
 	public override bool Equals (Object obj)
     {
-		bool result = false;
+		bool result = true;
 
-		// check if is same object
-		if (Object.ReferenceEquals(this, obj))
-		{
-			result = true;
-		} 
-		else if (obj is Matrix) 
-		{
-			Matrix other = (Matrix)obj;
+        // check if is same object
+        if (Object.ReferenceEquals(this, obj))
+        {
+            return true;
+        }
+        else if (obj is Matrix)
+        {
+            Matrix other = (Matrix)obj;
 
-			// check if same values
-			if (other.values.Length == values.Length)
-			{
-				for ( int i = 0; i < values.Length; i ++ )
+            // check if same values
+            if (other.values.Length == values.Length)
+            {
+                for (int i = 0; i < values.Length; i++)
                 {
-					// failed, exit out of loop 
-					if (values[i] != other.values[i])
+                    // failed, exit out of loop 
+                    if (values[i] != other.values[i])
                     {
-						break;
+                        result = false;
+                        break;
                     }
                 }
-
-				result = true;
-			}
+            }
+            else
+                result = false;
         }
+        else
+            result = false;
 
 		return result;
     }

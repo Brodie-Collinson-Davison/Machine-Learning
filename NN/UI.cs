@@ -6,15 +6,28 @@ static public class UI
     //      DISPLAY FUNCTIONS
     //
 
+    /// <summary>
+    /// Returns the enum index corresponding to the name of the selected enum type
+    /// </summary>
+    /// <param name="prompt"></param>
+    /// <param name="type"></param>
+    /// <returns></returns>
+    static public int SelectEnum (string prompt, Type type)
+    {
+        string [] options = Enum.GetNames(type);
+
+        return UI.MenuTree("", options, prompt) - 1;
+    }
+
     static public string ListSelection ( string prompt, string [] list )
     {
-        bool exitFlag = false;
+        bool flag_exit = false;
         string selection = null;
 
         int idx = 0;
         int menuIdx = 1;
 
-        while (!exitFlag)
+        while (!flag_exit)
         {
             string[] options = new string[Math.Min (9, list.Length - idx)];
 
@@ -27,6 +40,19 @@ static public class UI
             DisplayMenuTree(menuIdx, options);
 
             ConsoleKey input = Console.ReadKey().Key;
+
+            // check for direct option selection
+            // ascii numbers are from 48 to 57
+            if ((int)input > 47 && (int)input < 58)
+            {
+                int num = (int)input - 48;
+
+                if (num > 0 && num <= options.Length)
+                {
+                    selection = options[num - 1];
+                    flag_exit = true;
+                }
+            }
 
             switch (input)
             {
@@ -53,7 +79,7 @@ static public class UI
 
                 case ConsoleKey.Enter:
                     selection = options[menuIdx - 1];
-                    exitFlag = true;
+                    flag_exit = true;
                     break;
             }
         }
@@ -67,6 +93,8 @@ static public class UI
     {
         bool flag_exit = false;
         int menu_state = 1;
+
+        int startTop = Console.CursorTop;
 
         // menu interaction loop
         while (!flag_exit)
@@ -90,36 +118,41 @@ static public class UI
             ConsoleKey input = Console.ReadKey ().Key;
             
             // menu motion with arrow keys
-            if ( input == ConsoleKey.UpArrow && menu_state > 1)
+            if ( input == ConsoleKey.UpArrow )
             {
-                menu_state --;
+                if (menu_state > 1)
+                    menu_state--;
+                else
+                    menu_state = menuOptions.Length;
             }
-            else if ( input == ConsoleKey.DownArrow && menu_state < menuOptions.Length)
+            else if ( input == ConsoleKey.DownArrow )
             {
-                menu_state ++;
+                if (menu_state < menuOptions.Length)
+                    menu_state++;
+                else
+                    menu_state = 1;
             }
-
-            // clear display
-            Console.Clear();
 
             // check for option selection
             if (input == ConsoleKey.Enter )
             {
                 flag_exit = true;
             }
-            
+
             // check for direct option selection
             // ascii numbers are from 48 to 57
-            if ( (int)input > 47 && (int)input < 58 )
+            if ((int)input > 47 && (int)input < 58)
             {
                 int num = (int)input - 48;
 
-                if ( num > 0 && num <= menuOptions.Length )
+                if (num > 0 && num <= menuOptions.Length)
                 {
                     menu_state = num;
                     flag_exit = true;
                 }
             }
+
+            Console.CursorTop = startTop;
         }
         return menu_state;
     }
@@ -130,19 +163,17 @@ static public class UI
     {
         for ( int i = 1; i <= menuOptions.Length; i ++ )
         {
-            
             if ( state == i )
             {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.Write ("-");
-                Console.Write ("[{0}]\t", i);
+                Console.ForegroundColor = ConsoleColor.DarkCyan;
+                Console.Write (" [  {0}  ]\t", i);
                 Console.ForegroundColor = ConsoleColor.White;
             }
             else
             {
                 Console.Write ( "{0})\t", i);  
             }
-            Console.WriteLine (menuOptions[i - 1]);
+            Console.WriteLine (menuOptions[i - 1].PadRight (Console.WindowWidth - Console.CursorLeft - 1));
 
             SkpLn ();
         }
@@ -153,13 +184,22 @@ static public class UI
     static public void Display_Error (String message, bool assertContinue = false)
     {
         // display message
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.WriteLine (message);
+        Console.ForegroundColor = ConsoleColor.DarkRed;
+        Console.Write ("[  ERROR  ]\t");
         Console.ResetColor ();
+        Console.WriteLine(message);
 
         // halt and wait for user acknowledge
         if (assertContinue)
             AssertContinue();
+    }
+
+    static public void DisplayInfo(string info)
+    {
+        Console.ForegroundColor = ConsoleColor.DarkCyan;
+        Console.Write("[  i  ]\t");
+        Console.ResetColor();
+        Console.WriteLine(info);
     }
 
     // Skip lines
@@ -207,11 +247,18 @@ static public class UI
     //      INTERACTIVE METHODS
     //
 
+
+    static public string PromptUserInput (string prompt)
+    {
+        SkpLn();
+        Console.WriteLine($"[  {prompt}  ]");
+        return Console.ReadLine();
+    }
+
     // Halt the program until the user acknowledges the message
     static public void AssertContinue()
     {
-        Console.ForegroundColor = ConsoleColor.Green;
-        Console.Write("Press enter to continue:");
+        DisplayInfo("Press enter to continue...");   
         Console.ReadLine();
         Console.ResetColor();
     }
@@ -226,7 +273,7 @@ static public class UI
         while (!flag_exit)
         {
             // display input query instructions
-            Console.WriteLine(msg);
+            DisplayInfo(msg);
 
             // display bounds
             if (min != float.MinValue && max != float.MaxValue)
@@ -274,7 +321,7 @@ static public class UI
         while (!flag_exit)
         {
             // display input query instructions
-            Console.WriteLine(msg);
+            DisplayInfo (msg);
 
             // display bounds
             if (min != int.MinValue && max != int.MaxValue)

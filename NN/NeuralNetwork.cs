@@ -1,25 +1,37 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using System.Text.Json;
 
 namespace NN
 {
+    public enum CostFunctions
+    {
+        SqrError,   // Square Error function
+        CCE         // Categorical Cross Entropy
+    }
+
     [Serializable]
     public class NeuralNetwork
     {
+        [JsonInclude]
+        public CostFunctions CostFunction { get; private set; }
+        [JsonInclude]
         public int NUM_INPUTS { get; private set; }
-
+        [JsonInclude]
         public Matrix Inputs { get; private set; }
-        public Matrix Outputs { get; private set; }
-
+        [JsonInclude]
+        public Matrix Output { get; private set; }
+        [JsonInclude]
         public List<DenseLayer> Layers;
 
         public NeuralNetwork ()
         {
             NUM_INPUTS = 0;
             Inputs = new Matrix();
-            Outputs = new Matrix();
+            Output = new Matrix();
             Layers = new List<DenseLayer>();
+            CostFunction = default;
         }
 
         /// <summary>
@@ -28,10 +40,12 @@ namespace NN
         /// <param name="argString"></param>
         // example args "10 50r 10s 10s 3
         // 10 inputs 2 hidden lauys of size 50 10 3 output, hidden layer activations written as a suffix
-        public NeuralNetwork (string argString)
+        public NeuralNetwork (string argString, CostFunctions costFunc)
         {
             Inputs = new Matrix();
-            Outputs = new Matrix();
+            Output = new Matrix();
+
+            CostFunction = costFunc;
 
             // initialise layers
             Layers = new List<DenseLayer> ();
@@ -84,6 +98,17 @@ namespace NN
                     }
                 }
             }
+
+            // check if layers have correct form
+            foreach (DenseLayer d in Layers)
+            {
+                if (d.ActivationFunction == ActivationFunctions.SoftMax && (Layers.IndexOf(d) != Layers.Count - 1))
+                {
+                    // found a softmax layer that isnt at the output layer
+                    throw new ArgumentException("Args string contains a softmax layer that isnt the network output");
+                }
+
+            }
         }
 
         /// <summary>
@@ -107,12 +132,46 @@ namespace NN
                     curOutput = Layers[i].FeedForward(curOutput);
                 }
 
-                Outputs = curOutput;
+                Output = curOutput;
             }
 
-
-            return Outputs;
+            return Output;
         }    
+        
+        public Matrix GetCostDerivative (Matrix expected)
+        {
+            Matrix del = null;
+            switch (CostFunction)
+            {
+                case CostFunctions.SqrError:
+                    del = Output - expected;
+                    break;
+
+                case CostFunctions.CCE:
+                    del = Output - expected;
+                    break;
+            }
+
+            return del;
+        }
+
+        public float GetCost (Matrix expected)
+        {
+            float f = 0;
+
+            switch (CostFunction)
+            {
+                case CostFunctions.SqrError:
+                    f = SqrErrorCost(expected);
+                    break;
+
+                case CostFunctions.CCE:
+                    f = CategoricalCrossEntropyCost(expected);
+                    break;
+            }
+
+            return f;
+        }
 
         public override string ToString()
         {
@@ -122,14 +181,71 @@ namespace NN
 
             foreach (DenseLayer l in Layers)
             {
-                str += $"{l.ActivationFunction} Layer:\n".PadLeft(25);
-                str += "Weights:\n";
-                str += l.Weights.ToString() + "\n";
-                str += "Biases:\n";
+                str += $"{l.ActivationFunction} [{l.Size}]\t";
+                str += "Weights:  ";
+                str += l.Weights.ToString();
+                str += "\tBiases:  ";
                 str += l.Biases.ToString() + "\n";
             }
 
             return str;
+        }
+
+        public override bool Equals(object obj)
+        {
+            bool equals = true;
+            
+            // checks if is the same instance
+            if (Object.ReferenceEquals(obj, this))
+                return true;
+
+            if (obj is NeuralNetwork)
+            {
+                NeuralNetwork other = (NeuralNetwork)obj;
+
+                if (other.NUM_INPUTS != NUM_INPUTS)
+                    equals = false;
+
+                if (other.Layers.Count != Layers.Count)
+                    equals = false;
+                else
+                {
+                    for (int i = 0; i < Layers.Count; i++)
+                    {
+                        if (Layers[i] != other.Layers[i])
+                            equals = false;
+                    }
+                }
+            }
+            else
+                equals = false;
+
+            return equals;
+        }
+
+        private float SqrErrorCost(Matrix expected)
+        {
+            Matrix costmat = 0.5f * (expected - Output).ElementWisePow(2);
+            float costSum = 0;
+
+            // sum all output cost elements to get the total cost of the network
+            foreach (float f in costmat.values)
+            {
+                costSum += f;
+            }
+
+            return costSum;
+        }
+
+        private float CategoricalCrossEntropyCost(Matrix expected)
+        {
+            float f = 0;
+
+            int maxIdx = Matrix.ArgMaxIndex(expected);
+
+            f = -1f* (float)Math.Log(Output.values[maxIdx]);
+
+            return f / Output.values.Length;
         }
 
         // parses an argument from the arguments string and returns its corresponding ActivationFunctions type
@@ -146,7 +262,12 @@ namespace NN
                 case 's':
                     func = ActivationFunctions.Sigmoid;
                     break;
-                
+
+                // softmax 
+                case 'S':
+                    func = ActivationFunctions.SoftMax;
+                    break;
+
                 // relu
                 case 'r':
                 case 'R':
@@ -159,6 +280,26 @@ namespace NN
             }
 
             return func;
+        }
+
+        static public NeuralNetwork DeserializeFromJSON (string json)
+        {
+            NeuralNetwork net = null;
+
+            try
+            {
+                net = JsonSerializer.Deserialize<NeuralNetwork>(json);
+            } catch (Exception e)
+            {
+                Console.Error.WriteLine (e.Message);
+            }
+
+            return net;
+        }
+
+        public string GetJSONString ()
+        {
+            return JsonSerializer.Serialize(this);
         }
 
     }//NeuralNetwork ()

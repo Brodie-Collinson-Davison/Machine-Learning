@@ -33,8 +33,9 @@ static public class Mathf
 
     static public Matrix Relu (Matrix m, bool derivative = false)
     {
+        const float epsilon = 1e-9f;
         const float clip = 1.0f;
-        const float minVal = 0;
+        const float minVal = epsilon;
 
         Matrix result = new Matrix (m);
 
@@ -49,14 +50,9 @@ static public class Mathf
                 else if (f > clip)
                     f = clip;
                 else if (derivative)
-                    f = 1.0f - minVal;
+                    f = 1f;
                 result.SetValue(i, j, f);
             }
-        }
-
-        if (float.IsNaN (result.values [0]))
-        {
-
         }
 
         return result;
@@ -67,13 +63,7 @@ static public class Mathf
         Matrix result = new Matrix(m);
 
         float sum = 0;
-        float largestValue = float.MinValue;
-
-        foreach (float f in result.values)
-        {
-            if (f > largestValue)
-                largestValue = f;
-        }
+        float largestValue = Matrix.ArgMax(m);
 
         // get sum of all components normalised over the layer 
         for (int i = 0; i < result.values.Length; i ++)
@@ -84,16 +74,24 @@ static public class Mathf
         // calculate individual components
         for ( int i = 0; i < result.values.Length; i ++)
         {
-            float f = (float)Math.Exp(result.values[i]) / sum;
+            float f = (float)Math.Exp(result.values[i] - largestValue) / sum;
 
-            if ( float.IsNaN (f) )
-            {
-                
-            }
             result.values[i] = f;
         }
 
         return result;
+    }
+
+    // returns the average of all values in the array
+    public static float AverageArray(float[] array)
+    {
+        float sum = 0;
+        foreach (float f in array)
+        {
+            sum += f;
+        }
+
+        return sum / (float)array.Length;
     }
 
     // returns a uniformly distributed float between min and max

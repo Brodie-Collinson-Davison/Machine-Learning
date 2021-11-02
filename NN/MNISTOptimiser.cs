@@ -6,19 +6,30 @@ using System.IO;
 
 namespace NN
 {
+    public enum Optimizers
+    {
+        Batch,
+        Momentum,
+        RMSProp,
+        Adam
+    }
+
     public class TrainingParams
     {
+
         // default training parameter values
-        private const float DEFAULT_LEARNING_RATE = 0.01f;
-        private const float DEFAULT_MOMENTUM = 0.5f;
-        private const float DEFAULT_TARGET_COST = 0.1f;
-        private const int DEFAULT_BATCH_SIZE = 150;
-        private const int DEFAULT_MAX_EPOCH = 3;
+        private const float DEFAULT_ALPHA = 0.01f;
+        private const float DEFAULT_BETA1 = 0.9f;
+        private const float DEFAULT_BETA2 = 0.999f;
+        private const float DEFAULT_TARGET_COST = 0.04f;
+        private const int DEFAULT_BATCH_SIZE = 500;
+        private const int DEFAULT_MAX_EPOCH = 10;
 
         // class properties
-
-        public float LearningRate { get; set; }
-        public float Momentum { get; set; }
+        public Optimizers Optimizer { get; set; }
+        public float Alpha { get; set; }
+        public float Beta1 { get; set; }
+        public float Beta2 { get; set; }
         public float TargetCost { get; set; }
         public int BatchSize { get; set; }
         public int MaxEpoch { get; set; }
@@ -28,15 +39,19 @@ namespace NN
         // default constructor initialises with default values
         public TrainingParams
             (
-            float iLearningRate = DEFAULT_LEARNING_RATE,
-            float iMomentum = DEFAULT_MOMENTUM,
+            Optimizers iOptimizer = Optimizers.Adam,
+            float iAlpha = DEFAULT_ALPHA,
+            float iBeta1 = DEFAULT_BETA1,
+            float iBeta2 = DEFAULT_BETA2,
             float iTargetCost = DEFAULT_TARGET_COST,
             int iBatchSize = DEFAULT_BATCH_SIZE,
             int iMaxEpoch = DEFAULT_MAX_EPOCH
             )
         {
-            LearningRate = iLearningRate;
-            Momentum = iMomentum;
+            Optimizer = iOptimizer;
+            Alpha = iAlpha;
+            Beta1 = iBeta1;
+            Beta2 = iBeta2;
             TargetCost = iTargetCost;
             BatchSize = iBatchSize;
             MaxEpoch = iMaxEpoch;
@@ -45,8 +60,10 @@ namespace NN
         // copy ctor
         public TrainingParams (TrainingParams other)
         {
-            LearningRate = other.LearningRate;
-            Momentum = other.Momentum;
+            Optimizer = other.Optimizer;
+            Alpha = other.Alpha;
+            Beta1 = other.Beta1;
+            Beta2 = other.Beta2;
             TargetCost = other.TargetCost;
             BatchSize = other.BatchSize;
             MaxEpoch = other.MaxEpoch;
@@ -54,8 +71,10 @@ namespace NN
 
         public override String ToString ()
         {
-            String str = "Learning Rate: " + LearningRate;
-            str += "\tMomentum: " + Momentum;
+            String str = "Optimizer: " + Enum.GetName(typeof(Optimizers), Optimizer);
+            str += "\tAlpha: " + Alpha;
+            str += "\tBeta1: " + Beta1;
+            str += "\tBeta2: " + Beta2;
             str += "\tTarget Cost: " + TargetCost;
             str += "\tBatchSize: " + BatchSize;
             str += "\tMaxEpoch: " + MaxEpoch;
@@ -96,8 +115,18 @@ namespace NN
             target.SetValue(img.label, 0, 1.0f);
         }
 
-        public static void TrainNetwork (NeuralNetwork net, TrainingParams tParams = null )
+        public static float TrainNetwork (NeuralNetwork net, TrainingParams tParams = null, string logFileName = null )
         {
+            // if no parameters are specified, use the defaults
+            if (tParams == null)
+                tParams = new TrainingParams();
+
+            int startTop = 0;
+
+            // number of batches to run before logging
+            const int numStepsPerLog = 10;
+            int MOVING_AVERAGE_SIZE = 100;
+
             bool doneTraining = false;
             
             // read MNIST data
@@ -109,18 +138,30 @@ namespace NN
 
             int NUM_BATCHES = NUM_TRAINING_IMAGES / tParams.BatchSize;
 
-            Console.WriteLine("Starting Training...");
-            Console.WriteLine(tParams);
-
-            // clear log file
-            new FileStream("devLogFile.csv", FileMode.Create).Close ();
+            float endCost = 0;
 
             while (!doneTraining)
             {
                 int epochCount = 1;
-                const int numStepsPerLog = 5;
 
-                // run epochs
+                Matrix[] vdW = new Matrix[net.Layers.Count];
+                Matrix[] vdB = new Matrix[net.Layers.Count];
+                Matrix[] sdW = new Matrix[net.Layers.Count];
+                Matrix[] sdB = new Matrix[net.Layers.Count];
+
+                
+                // for logging
+                float costSum = 0;
+                float accuracySum = 0;
+                Queue<float> costQueue = new Queue<float>(MOVING_AVERAGE_SIZE);
+                Queue<float> accuracyQueue = new Queue<float>(MOVING_AVERAGE_SIZE);
+                
+                List<string> logData = new List<string>();
+
+                float alpha = tParams.Alpha;
+                const float decay = 0.05f;
+
+                // run through the epoch
                 while (epochCount <= tParams.MaxEpoch && !doneTraining)
                 {
                     // shuffle training data and get enumerator
@@ -129,13 +170,27 @@ namespace NN
 
                     int batchCount = 1;
 
-                    const int numTrackedQuantities = 3;
-                    List<string> logData = new List<string>();
-                    
-                    while (batchCount <= NUM_BATCHES)
+                    int idx = 0;
+                    foreach (DenseLayer l in net.Layers)
                     {
+                        vdW[idx] = new Matrix(l.Weights.Rows, l.Weights.Cols);
+                        sdW[idx] = new Matrix(l.Weights.Rows, l.Weights.Cols);
+                        vdB[idx] = new Matrix(l.Biases.Rows, l.Biases.Cols);
+                        sdB[idx] = new Matrix(l.Biases.Rows, l.Biases.Cols);
+                        idx++;
+                    }
+
+                    Matrix[] weightChanges = new Matrix[net.Layers.Count];
+                    Matrix[] biasChanges = new Matrix[net.Layers.Count];
+
+                    while (batchCount <= NUM_BATCHES)
+                    {    
                         float batchAvgCost = 0;
                         float batchAccuracy = 0;
+
+                        // weight and bias derivatives for all network layers
+                        Matrix[] batchWeightGradients;
+                        Matrix[] batchBiasGradients;
 
                         // run training batch
                         RunTrainingBatch (
@@ -143,39 +198,165 @@ namespace NN
                             ref imgEnumerator, 
                             tParams,
                             out batchAccuracy,
-                            out batchAvgCost);
+                            out batchAvgCost,
+                            out batchWeightGradients,
+                            out batchBiasGradients);
 
-                        
-                        // reset cursor
-                         Console.SetCursorPosition(0, 0);
-
-                        // display training metrics
-                        UI.DisplayCentered("Training in Progress");
-                        UI.DisplayProgressBar((float)batchCount / (float)NUM_BATCHES);
-
-                        UI.SkpLn(3);
-
-                        Console.WriteLine($"Batch\nAccuracy: {batchAccuracy}\nAvgCost: {batchAvgCost}");
-
-                        int step = batchCount + (NUM_BATCHES * (epochCount - 1));
-                        logData.Add(step.ToString());
-                        logData.Add(batchAccuracy.ToString ());
-                        logData.Add(batchAvgCost.ToString ());
-
-                        if (batchCount % numStepsPerLog == 0)
+                        switch (tParams.Optimizer)
                         {
-                            StreamWriter loggingStreamWriter = File.AppendText("devLogFile.csv");
+                            // update the weights using the mini-batch gradient
+                            case Optimizers.Batch:
+                                for (int i = 0; i < net.Layers.Count; i ++ )
+                                {
+                                    weightChanges[i] = -tParams.Alpha * batchWeightGradients[i];
+                                    biasChanges[i] = -tParams.Alpha * batchBiasGradients[i];
+                                 }
+                                break;
 
-                            LogTrainingData(loggingStreamWriter, logData.ToArray(), numTrackedQuantities);
-                            logData = new List<string>();
+                            case Optimizers.Momentum:
+                                {
+                                    // calculate momentum for all layers
+                                    for (int i = 0; i < batchWeightGradients.Length; i++)
+                                    {
+                                        vdW[i] = tParams.Beta1 * vdW[i] + (1.0f - tParams.Beta1) * batchWeightGradients[i];
+                                        vdB[i] = tParams.Beta1 * vdB[i] + (1.0f - tParams.Beta1) * batchBiasGradients[i];
 
-                            loggingStreamWriter.Close();
+                                        weightChanges[i] = -tParams.Alpha * vdW[i];
+                                        biasChanges[i] = -tParams.Alpha * vdB[i];
+                                    }
+
+                                    break;
+                                }
+
+                            case Optimizers.RMSProp:
+
+                                for (int i = 0; i < net.Layers.Count; i ++)
+                                {
+                                    sdW[i] = tParams.Beta2 * sdW[i] + (1.0f - tParams.Beta2) * batchWeightGradients[i].ElementWisePow(2);
+                                    sdB[i] = tParams.Beta2 * sdB[i] + (1.0f - tParams.Beta2) * batchBiasGradients[i].ElementWisePow(2);
+
+                                    weightChanges[i] = new Matrix(net.Layers[i].Weights.Rows, net.Layers[i].Weights.Cols);
+                                    biasChanges[i] = new Matrix(net.Layers[i].Biases.Rows, net.Layers[i].Biases.Cols);
+
+                                    for (int j = 0; j < sdW[i].values.Length; j ++)
+                                    {
+                                        weightChanges[i].values[j] = -tParams.Alpha * batchWeightGradients[i].values[j] / ((float)Math.Sqrt (sdW[i].values[j] + 10e-8f) );
+                                    }
+                                    for (int j = 0; j < sdB[i].values.Length; j ++)
+                                    {
+                                        biasChanges[i].values[j] = -tParams.Alpha * batchBiasGradients[i].values[j] / ((float)Math.Sqrt(sdB[i].values[j] + 10e-8f) );
+                                    }
+
+                                }
+
+                                break;
+
+                            case Optimizers.Adam:
+
+                                float b1Norm = 1.0f; // / (1 - (float)Math.Pow(tParams.Beta1, batchCount));
+                                float b2Norm = 1.0f; // / (1 - (float)Math.Pow(tParams.Beta2, batchCount));
+
+                                for (int i = 0; i < net.Layers.Count; i++)
+                                {
+                                    vdW[i] = tParams.Beta1 * vdW[i] + (1.0f - tParams.Beta1) * batchWeightGradients[i];
+                                    vdB[i] = tParams.Beta1 * vdB[i] + (1.0f - tParams.Beta1) * batchBiasGradients[i];
+
+                                    sdW[i] = tParams.Beta2 * sdW[i] + (1.0f - tParams.Beta2) * batchWeightGradients[i].ElementWisePow(2);
+                                    sdB[i] = tParams.Beta2 * sdB[i] + (1.0f - tParams.Beta2) * batchBiasGradients[i].ElementWisePow(2);
+
+                                    vdW[i] = b1Norm * vdW[i];
+                                    vdB[i] = b1Norm * vdB[i];
+                                    sdW[i] = b2Norm * sdW[i];
+                                    sdB[i] = b2Norm * sdB[i];
+
+                                    weightChanges[i] = new Matrix(net.Layers[i].Weights.Rows, net.Layers[i].Weights.Cols);
+                                    biasChanges[i] = new Matrix(net.Layers[i].Biases.Rows, net.Layers[i].Biases.Cols);
+
+                                    for (int j = 0; j < sdW[i].values.Length; j++)
+                                    {
+                                        weightChanges[i].values[j] = -alpha * vdW[i].values[j] / ((float)Math.Sqrt(sdW[i].values[j] + 10e-8f));
+                                    }
+                                    for (int j = 0; j < sdB[i].values.Length; j++)
+                                    {
+                                        biasChanges[i].values[j] = -alpha * vdB[i].values[j] / ((float)Math.Sqrt(sdB[i].values[j] + 10e-8f));
+                                    }
+
+                                }
+
+                                break;
                         }
 
+                        // apply weight and bias changes to network
+                        for (int i = 0; i < net.Layers.Count; i ++)
+                        {
+                            net.Layers[i].Weights += weightChanges[i];
+                            net.Layers[i].Biases += biasChanges[i];
+                        }
+
+                        // populate cost queue for moving average
+                        if (costQueue.Count == MOVING_AVERAGE_SIZE)
+                        {
+                            costSum -= costQueue.Dequeue();
+                            accuracySum -= accuracyQueue.Dequeue();
+                        }
+
+                        costSum += batchAvgCost;
+                        accuracySum += batchAccuracy;
+
+                        costQueue.Enqueue(batchAvgCost);
+                        accuracyQueue.Enqueue(batchAccuracy);
+                        
+                        float epochAvgAccuracy = accuracySum / accuracyQueue.Count; 
+                        float epochAvgCost = costSum / costQueue.Count;
+                        endCost = epochAvgCost;
+
+                        // reached training goal
+                        if (epochAvgCost <= tParams.TargetCost)
+                        {
+                            UI.DisplayInfo($"Done training! Target {tParams.TargetCost}\tCost average over epoch{epochAvgCost}");
+                            doneTraining = true;
+                            break;
+                        }
+
+                        if (logFileName != null)
+                        {
+                            // reset cursor
+                            Console.SetCursorPosition(0, startTop);
+
+                            // display training metrics
+                            Console.Write($"epoch ({epochCount} / {tParams.MaxEpoch})");
+                            UI.DisplayProgressBar((float)batchCount / (float)NUM_BATCHES, 10);
+
+                            //Console.WriteLine($"[ Average Accuracy ] {epochAvgAccuracy}\t[ Average Cost ] {epochAvgCost}".PadRight (Console.WindowWidth-2));
+                            //Console.WriteLine($"[ Accuracy ] {batchAccuracy}\t[ Cost ] {batchAvgCost}".PadRight (Console.WindowWidth-2));
+                            //Console.WriteLine($"[ Current alpha ] {alpha}".PadRight (Console.WindowWidth-2));
+                        }
+
+                        if (logFileName != null) // check if log file is supplied
+                        {
+                            int step = batchCount + (NUM_BATCHES * (epochCount - 1));
+                            logData.Add(step.ToString());
+                            logData.Add(batchAccuracy.ToString ());
+                            logData.Add(batchAvgCost.ToString ());
+                            logData.Add(epochAvgAccuracy.ToString ());
+                            logData.Add(epochAvgCost.ToString());
+
+                            if (batchCount % numStepsPerLog == 0)
+                            {
+                                StreamWriter loggingStreamWriter = File.AppendText(logFileName);
+
+                                LogTrainingData(loggingStreamWriter, logData.ToArray(), 5);
+                                
+                                logData = new List<string>();
+                                loggingStreamWriter.Close();
+                            }
+                        }    
 
                         batchCount++; 
-                    }
+                    }//batchloop
 
+                    alpha = alpha * 1.0f / (1.0f + decay);
+                    startTop++;
                     epochCount++;
                 }//epochLoop
 
@@ -183,8 +364,9 @@ namespace NN
                 doneTraining = true;
             }//TrainingLoop    
 
-        }//TrainNetwork ()
+            return endCost;
 
+        }//TrainNetwork ()
 
         /// <summary>
         /// Runs a training batch within a training epoch. Performs weight and bias optimisation using backpropagation 
@@ -200,7 +382,9 @@ namespace NN
             ref IEnumerator<Image> imgEnumerator, 
             TrainingParams tParams,
             out float accuracy,
-            out float avgCost)
+            out float avgCost,
+            out Matrix[] weightDeltas,
+            out Matrix[] biasDeltas)
         {
             double costSum = 0;
 
@@ -210,16 +394,12 @@ namespace NN
             // initialise buffers for weight and bias deltas storage
             Matrix[] accumulatedWeightDeltas    = new Matrix[net.Layers.Count];
             Matrix[] accumulatedBiasDeltas      = new Matrix[net.Layers.Count];
-            Matrix[] prevWeightDeltas           = new Matrix[net.Layers.Count];
-            Matrix[] prevBiasDeltas             = new Matrix[net.Layers.Count];
 
             for ( int i = 0; i < net.Layers.Count; i ++ )
             {
                 DenseLayer l = net.Layers[i];
                 accumulatedWeightDeltas[i]  = new Matrix(l.Weights.Rows, l.Weights.Cols);
                 accumulatedBiasDeltas[i]    = new Matrix(l.Biases.Rows, l.Biases.Cols);
-                prevWeightDeltas[i]         = new Matrix(l.Weights.Rows, l.Weights.Cols);
-                prevBiasDeltas[i]           = new Matrix (l.Biases.Rows, l.Biases.Cols);
             }
 
             // iterate through training images while still within the current batch
@@ -238,11 +418,11 @@ namespace NN
                     numCorrect++;
 
                 // calculate cost for this training example to quantify how wrong the network is
-                float CE = CategoricalCrossEntropyCost (expected, prediction);
-                costSum += CE;
+                float cost = net.GetCost(expected);
+                costSum += cost;
 
-                // derivative of Cost w.r.t current layer activations = (y-a)
-                Matrix dCdA = (prediction - expected);
+                // derivative of Cost w.r.t
+                Matrix dCdA = net.GetCostDerivative(expected);
 
                 // propagate error back through network
                 for (int i = net.Layers.Count - 1; i >= 0; i --)
@@ -256,20 +436,8 @@ namespace NN
                     Matrix dW = del * ((i==0)? net.Inputs : net.Layers[i-1].A).Transpose();
                     Matrix dB = del;
 
-                    // add momentum term to deltas
-                    if ( count > 1 )
-                    {
-                        dW += tParams.Momentum * prevWeightDeltas[i];
-                        dB += tParams.Momentum * prevBiasDeltas[i];
-                    }
-
-                    // set previous changes for momentum algorithm
-                    prevWeightDeltas[i] = dW;
-                    prevBiasDeltas[i] = dB;
-
-                    // accumulate deltas to gradient approximate
-                    accumulatedWeightDeltas[i] += dW;
-                    accumulatedBiasDeltas[i] += dB;
+                    accumulatedWeightDeltas[i] += (1.0f / (float)tParams.BatchSize) * dW;
+                    accumulatedBiasDeltas[i] += (1.0f / (float)tParams.BatchSize) * dB;
 
                     if ( i > 0 )
                         dCdA = l.Weights.Transpose() * del;
@@ -278,12 +446,8 @@ namespace NN
                 count++;
             }//batch loop
 
-            // apply stored weight and bias changes
-            for (int i = 0; i < net.Layers.Count; i ++ )
-            {
-                net.Layers[i].Weights = net.Layers[i].Weights - tParams.LearningRate * accumulatedWeightDeltas[i];
-                net.Layers[i].Biases = net.Layers[i].Biases - tParams.LearningRate * accumulatedBiasDeltas[i];
-            }
+            weightDeltas = accumulatedWeightDeltas;
+            biasDeltas = accumulatedBiasDeltas;
 
             // calculate metrics
             avgCost = (float)costSum / (float)count;
@@ -298,30 +462,39 @@ namespace NN
             int counter = 1;
             int numCorrect = 0;
 
-            Console.Clear();
+            double costSum = 0;
 
-            foreach (var img in images)
+            Console.Clear();
+            Console.SetCursorPosition(0, 0);
+
+            var enumerator = images.GetEnumerator();
+
+            while (enumerator.MoveNext ())
             {
+                var img = enumerator.Current;
+
                 Matrix input;
                 Matrix expected;
                 ProcessImg(img, out input, out expected);
 
                 Matrix result = net.Predict(input);
+                costSum += net.GetCost(expected);
 
                 if (Matrix.ArgMaxIndex (result) == img.label)
                     numCorrect++;
 
-                if (counter % (NUM_TEST_IMAGES / 10) == 0)
+                if (counter % (NUM_TEST_IMAGES / 30) == 0)
                 {
-                    Console.WriteLine("Testing: ");
-                    UI.DisplayProgressBar((float)counter / (float) NUM_TEST_IMAGES, 10);
+                    UI.DisplayInfo("Testing...");
+                    UI.DisplayProgressBar((float)counter / (float) NUM_TEST_IMAGES);
 
-                    Console.SetCursorPosition(0, 0);
+                    if (counter < NUM_TEST_IMAGES)
+                        Console.SetCursorPosition(0, 0);
                 }
 
                 counter++;
             }
-
+            
             return (float)numCorrect / (float)counter;
         }
 
@@ -350,32 +523,6 @@ namespace NN
                 
                 ctr++;
             }
-        }
-
-        private static float SqrDistOutputCost(Matrix expected, Matrix output)
-        {
-            Matrix costmat = 0.5f * (output - expected).ElementWisePow(2);
-            float costSum = 0;
-
-            // sum all output cost elements to get the total cost of the network
-            foreach (float f in costmat.values)
-            {
-                costSum += f;
-            }
-
-            return costSum;
-        }
-
-        private static float CategoricalCrossEntropyCost (Matrix expected, Matrix output)
-        {
-            float f = 0;
-
-            for (int i = 0; i < output.values.Length; i ++)
-            {
-                f += -expected.values[i] * (float)Math.Log(output.values[i]);
-            }
-
-            return f / output.values.Length;
         }
     }
 }

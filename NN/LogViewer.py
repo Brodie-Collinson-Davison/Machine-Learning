@@ -5,37 +5,43 @@ import os
 
 exitflag = False
 
-fig, axs = plt.subplots (2)
+fig, axs = plt.subplots (2, 2)
+axs [0, 0].set_title ("Batch Cost vs Step")
+axs [1, 0].set_title ("Batch Accuracy vs Step")
+axs [0, 1].set_title ("Epoch Cost vs Step")
+axs [1, 1].set_title ("Epoch Accuracy vs Step")
 
-while True:
+while plt.fignum_exists (1):
+
     # open log file
-    logFile = open (os.getcwd () + "/bin/Release/devLogFile.csv", "r")
+    logFile = open (os.getcwd () + "/TrainingLog.csv", "r")
     data = logFile.read ().splitlines ()
 
     # close log file
     logFile.close ()
     
     steps = []
-    accuracy = []
-    cost = []
+    batch_accuracy = []
+    batch_cost = []
+    epoch_accuracy = []
+    epoch_cost = []
 
     # parse log file
     for s in data:
         tokens = s.split (',')
         steps.append (float (tokens [0]))
-        accuracy.append (float (tokens [1]))
-        cost.append (float (tokens [2]))
+        batch_accuracy.append (float (tokens [1]))
+        batch_cost.append (float (tokens [2]))
+        epoch_accuracy.append (float (tokens [3]))
+        epoch_cost.append (float (tokens [4]))
 
-    cost_norm = np.array (cost)
-    cost_norm = cost_norm [~np.isnan (cost)]
-
-    accuracy_norm = np.array (accuracy)
-    accuracy_norm = accuracy_norm [~np.isnan (cost)]
 
     n = np.array (steps)
-    n = n [~np.isnan (cost)]
+    n = n [~np.isnan (batch_cost)]
 
     # graph log data
-    axs [0].plot (n, cost_norm, '-b')
-    axs [1].plot (n, accuracy_norm, '-r')
-    plt.pause (0.5)
+    axs [0, 0].plot (n, batch_cost, '-b')
+    axs [1, 0].plot (n, batch_accuracy, '-r')
+    axs [0, 1].plot (n, epoch_cost, '-b')
+    axs [1, 1].plot (n, epoch_accuracy, '-r')
+    plt.pause (1)
